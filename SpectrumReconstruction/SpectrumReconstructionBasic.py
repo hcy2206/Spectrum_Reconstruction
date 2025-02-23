@@ -1,7 +1,8 @@
-from typing import Literal, overload
+from typing import Literal, overload, Any
 
 import numpy as np
 import pandas as pd
+from numpy import ndarray, dtype, unsignedinteger
 from scipy.optimize import minimize
 
 from SpectrumReconstruction.Utility import blackbody, gaussian
@@ -13,7 +14,7 @@ def _clean_pivot_training_data(data: pd.DataFrame,
                                external_var_col_name: str,
                                dependent_var_col_name: str,
                                pass_in_pivot_data: bool = False
-                               ):  # -> pd.DataFrame:
+                               ) -> pd.DataFrame:
     # First, construct the pivot table
     if pass_in_pivot_data:
         pivot = data
@@ -73,10 +74,13 @@ def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
                        **kwargs
-                       ):  # -> np.ndarray:
+                       ) -> None | ndarray:
+
     match method:
         case 'normal':
-            return np.linalg.inv(x.T @ x) @ x.T @ y
+            # result = np.linalg.inv(x.T @ x) @ x.T @ y
+            result = np.linalg.pinv(x) @ y
+            return np.array(result, dtype=np.float64)
         case 'l1':
             lambda_reg = kwargs.get('lambda_reg', 0.001)
 
@@ -85,7 +89,7 @@ def _linear_regression(x: np.ndarray,
 
             initial_guess = np.zeros(x.shape[1])
             result = minimize(objective, initial_guess, method='SLSQP')
-            return result.x
+            return np.array(result.x, dtype=np.float64)
         case 'l2':
             lambda_reg = kwargs.get('lambda_reg', 0.001)
 
@@ -94,7 +98,7 @@ def _linear_regression(x: np.ndarray,
 
             initial_guess = np.zeros(x.shape[1])
             result = minimize(objective, initial_guess, method='SLSQP')
-            return result.x
+            return np.array(result.x, dtype=np.float64)
         case 'ElasticNet':
             lambda_reg = kwargs.get('lambda_reg', 0.001)
             alpha = kwargs.get('alpha', 0.5)
@@ -105,7 +109,7 @@ def _linear_regression(x: np.ndarray,
 
             initial_guess = np.zeros(x.shape[1])
             result = minimize(objective, initial_guess, method='SLSQP')
-            return result.x
+            return np.array(result.x, dtype=np.float64)
 
 
 class SpectrumReconstructionBasic:
@@ -151,7 +155,7 @@ class SpectrumReconstructionBasic:
         self._pivot_training_data = None
         self._pivot_test_data = None
         self._verify_pivot_data = verify_pivot_data
-        self._pass_in_pivot_test_data = None
+        self._pivot_pass_in_test_data = None
         self._a = None
         # self.spectrum = None
 
@@ -189,7 +193,10 @@ class SpectrumReconstructionBasic:
             case _:
                 raise ValueError('base_func must be either "blackbody" or "gaussian"')
 
-    def base_func(self, lambda_: np.ndarray, external_var: float):  # -> np.ndarray:
+    def base_func(self,
+                  lambda_: np.ndarray,
+                  external_var: np.ndarray
+                  ) -> np.ndarray:
         match self._base_func_name:
             case 'blackbody':
                 return blackbody(lambda_, external_var)
@@ -213,7 +220,7 @@ class SpectrumReconstructionBasic:
                              method: Literal['l1', 'l2'],
                              *args,
                              lambda_reg: float,
-                             pass_in_pivot_test_data: bool = True,
+                             pivot_pass_in_test_data: bool = True,
                              **kwargs):
         ...
 
@@ -224,7 +231,7 @@ class SpectrumReconstructionBasic:
                              *args,
                              lambda_reg: float,
                              alpha: float,
-                             pass_in_pivot_test_data: bool = True,
+                             pivot_pass_in_test_data: bool = True,
                              **kwargs):
         ...
 
@@ -232,11 +239,11 @@ class SpectrumReconstructionBasic:
                              testing_data: pd.DataFrame,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
                              *args,
-                             pass_in_pivot_test_data: bool = True,
-                             **kwargs):  # -> None:
+                             pivot_pass_in_test_data: bool = True,
+                             **kwargs) -> np.ndarray:
         self._testing_data = testing_data
-        self._pass_in_pivot_test_data = pass_in_pivot_test_data
-        if self._pass_in_pivot_test_data:
+        self._pivot_pass_in_test_data = pivot_pass_in_test_data
+        if self._pivot_pass_in_test_data:
             pivot = self._testing_data.pivot(
                 index=self._internal_var_col_name,
                 columns=self._external_var_col_name,
@@ -248,7 +255,7 @@ class SpectrumReconstructionBasic:
         # print(pivot.shape)
         # print(pivot.values)
         if pivot.shape[1] != 1:
-            raise ValueError('The pivot table of test data should have only one row')
+            raise ValueError('The pivot table of test data should have only one column')
         elif pivot.isna().any().any():
             raise ValueError('Missing values found in the pivot table of test data')
         elif pivot.empty:
@@ -284,9 +291,9 @@ class SpectrumReconstructionBasic:
         return a
 
     def spectrum(self,
-                 lambda_: np.ndarray,
+                 lambda_: float | np.ndarray,
                  normalize: bool = True
-                 ):  # -> np.ndarray:
+                 ) -> float | np.ndarray:
         if self._external_var_col is None:
             raise ValueError('External variable not found')
 
@@ -295,7 +302,15 @@ class SpectrumReconstructionBasic:
 
         external_var = self._external_var_col.values.astype(np.float64)
 
-        result = np.array([np.sum(self._a * self.base_func(l, external_var)) for l in lambda_])
+        external_var = external_var.reshape((1, -1))
+        external_var = np.repeat(external_var, lambda_.shape[0], axis=0)
+        lambda_ = lambda_.reshape((-1, 1))
+        lambda_ = np.repeat(lambda_, external_var.shape[1], axis=1)
+
+        result = self.base_func(lambda_, external_var) @ self._a
+
+        if result.ndim > 1:
+            result = result.flatten()
 
         if normalize:
             result = np.abs(result)

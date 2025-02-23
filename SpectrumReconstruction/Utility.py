@@ -6,7 +6,9 @@ h = 6.62607015e-34  # Planck constant [J*s]
 c = 3.0e8  # Speed of light [m/s]
 k = 1.38064852e-23  # Boltzmann constant [J/K]
 
-def blackbody(lambda_: np.ndarray, t: float) -> np.ndarray:
+def blackbody(lambda_: float | np.ndarray,
+              t: float | np.ndarray
+              ) -> float | np.ndarray:
     # Compute the factor: hc/(lambda*k*t)
     factor = h * c / (lambda_ * k * t)
 
@@ -22,16 +24,17 @@ def blackbody(lambda_: np.ndarray, t: float) -> np.ndarray:
     return np.exp(log_i)
 
 
-def gaussian(lambda_: np.ndarray,
-             mu: float,
-             sigma: float):  # -> np.ndarray:
+def gaussian(lambda_: float | np.ndarray,
+             mu: float | np.ndarray,
+             sigma: float
+             ) -> float | np.ndarray:
     # Gaussian function for spectral analysis
     return np.exp(-((lambda_ - mu) ** 2) / (2 * sigma ** 2))
 
-def ideal_responsivity(lambda_: np.ndarray,
+def ideal_responsivity(lambda_: np.ndarray[float],
                        e_g: float, # Bandgap energy [J]
                        eta: float = 1.0
-                       ):  # -> np.ndarray:
+                       ) -> np.ndarray:
     # Compute the cut-off wavelength
     lambda_g = h * c / e_g
 
@@ -44,28 +47,28 @@ def ideal_responsivity(lambda_: np.ndarray,
 
     return R
 
-def smooth_responsivity(lambda_: np.ndarray,
+def smooth_responsivity(lambda_: np.ndarray[float],
                         e_g: float, # Bandgap energy [J]
                         delta_lambda: float = 30e-9,
                         eta: float = 1.0
-                        ):  # -> np.ndarray:
+                        ) -> np.ndarray[float]:
     # Compute the cut-off wavelength
     lambda_g = h * c / e_g
 
     # Compute the basic responsivity
     R = (q * lambda_) / (h * c)
 
-    # Introduce an exponential decay for smooth transition
+    # Introduce exponential decay for smooth transition
     smooth_factor = 1 / (1 + np.exp((lambda_ - lambda_g) / delta_lambda))
 
     return R * smooth_factor
 
-def smooth_responsivity_visible_blind(lambda_: np.ndarray,
+def smooth_responsivity_visible_blind(lambda_: np.ndarray[float],
                         e_g: float, # Bandgap energy [J]
                         delta_lambda: float = 30e-9,
                         eta: float = 1.0,
                         blind_wavelength: float = 800e-9
-                        ):  # -> np.ndarray:
+                        ) -> np.ndarray[float]:
     # Compute the cut-off wavelength
     lambda_g = h * c / e_g
 
@@ -74,7 +77,30 @@ def smooth_responsivity_visible_blind(lambda_: np.ndarray,
 
     R[lambda_ < blind_wavelength] = 0
 
-    # Introduce an exponential decay for smooth transition
+    # Introduce exponential decay for smooth transition
     smooth_factor = 1 / (1 + np.exp((lambda_ - lambda_g) / delta_lambda))
 
     return R * smooth_factor
+
+def gaussian_spectrum_sum(
+        _wavelength: np.ndarray[float],
+        _mu: np.ndarray[float],
+        _sigma: float,
+        _alpha: np.ndarray[float],
+        **kwargs
+) -> np.ndarray[float]:
+    result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma)
+    for i in range(1, len(_mu)):
+        result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma)
+    return result
+
+def blackbody_spectrum_sum(
+        _wavelength: np.ndarray[float],
+        _T: np.ndarray[float],
+        _alpha: np.ndarray[float],
+        **kwargs
+) -> np.ndarray[float]:
+    result = _alpha[0] * blackbody(_wavelength, _T[0])
+    for i in range(1, len(_T)):
+        result += _alpha[i] * blackbody(_wavelength, _T[i])
+    return result
