@@ -1,14 +1,16 @@
 from typing import Callable, Literal, overload
-from SpectrumReconstruction.SpectrumReconstructionBasic import SpectrumReconstructionBasic
-from SpectrumReconstruction.Utility import smooth_responsivity, gaussian, blackbody
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
+
+from SpectrumReconstruction.Utility import smooth_responsivity, gaussian, blackbody
 
 # Constants
 q = 1.60217662e-19  # Elementary charge [C]
 h = 6.62607015e-34  # Planck constant [J*s]
 c = 3.0e8  # Speed of light [m/s]
+
 
 class IdealSemiconductorPhotoDetector:
     def __init__(self,
@@ -94,13 +96,14 @@ class IdealSemiconductorPhotoDetector:
 
         return fig
 
+
 class IncidentSpectrum:
     @overload
     def __init__(self,
                  wavelength: np.ndarray[float],  # Wavelength array [m],
                  base_function_name: Literal['gaussian'],  # Base spectrum function
                  sigma: float,  # Standard deviation for Gaussian
-                 mu: np.ndarray[float]  # Mean for Gaussian
+                 mu: np.ndarray  # Mean for Gaussian
                  ):
         ...
 
@@ -108,7 +111,7 @@ class IncidentSpectrum:
     def __init__(self,
                  wavelength: np.ndarray[float],  # Wavelength array [m],
                  base_function_name: Literal['blackbody'],  # Base spectrum function
-                 T: np.ndarray[float] # Temperature for Blackbody
+                 T: np.ndarray  # Temperature for Blackbody
                  ):
         ...
 
@@ -189,7 +192,6 @@ class IncidentSpectrum:
             case _:
                 raise ValueError("Unsupported base function.")
 
-
         # Create a figure using plotly express
         fig = px.line(
             fig_data,
@@ -206,13 +208,14 @@ class IncidentSpectrum:
 
         return fig
 
+
 class SimulationSpectrum:
     def __init__(self,
-                 wavelength: np.ndarray[float],  # Wavelength array [m]
+                 wavelength_array: np.ndarray[float],  # Wavelength array [m]
                  spectrum_function: Callable[..., np.ndarray[float]]  # Spectrum function
-                ):
+                 ):
         self._spectrum = None
-        self.wavelength = wavelength
+        self.wavelength = wavelength_array
         self.spectrum_function = spectrum_function
 
     def set_spectrum(self, **kwargs) -> pd.DataFrame:
@@ -250,6 +253,27 @@ class SimulationSpectrum:
 
         return fig
 
+    @property
+    def spectrum_figure(self) -> px.line:
+        # Initialize an empty DataFrame to store the data
+        if self._spectrum is None:
+            raise ValueError("Spectrum has not been set. Please call set_spectrum() first.")
+        fig_data = self._spectrum
+        # Create a figure using plotly express
+        fig = px.line(
+            fig_data,
+            x='wavelength',
+            y='spectrum',
+            labels={
+                'wavelength': 'Wavelength (m)',
+                'spectrum': 'Spectrum'
+            },
+            title='Spectrum vs Wavelength'
+        )
+
+        return fig
+
+
 def simulate_response_matrix(
         photodetector: IdealSemiconductorPhotoDetector,
         incident_spectrum: IncidentSpectrum
@@ -284,6 +308,7 @@ def simulate_response_matrix(
         case _:
             raise ValueError("Unsupported base function.")
     return _response_matrix
+
 
 def simulate_unknown_response(
         photodetector: IdealSemiconductorPhotoDetector,
