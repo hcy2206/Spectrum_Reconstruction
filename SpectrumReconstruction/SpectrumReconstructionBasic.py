@@ -1,9 +1,10 @@
-from typing import Literal, overload, Any
+from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
-from numpy import ndarray, dtype, unsignedinteger
+from numpy import ndarray
 from scipy.optimize import minimize
+from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
 from SpectrumReconstruction.Utility import blackbody, gaussian
 
@@ -75,41 +76,51 @@ def _linear_regression(x: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
                        **kwargs
                        ) -> None | ndarray:
-
+    lambda_reg = kwargs.get('lambda_reg', 0.001)
+    alpha = kwargs.get('alpha', 0.5)
     match method:
         case 'normal':
             # result = np.linalg.inv(x.T @ x) @ x.T @ y
             result = np.linalg.pinv(x) @ y
             return np.array(result, dtype=np.float64)
         case 'l1':
-            lambda_reg = kwargs.get('lambda_reg', 0.001)
+            # def objective(a):
+            #     return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(np.abs(a))
+            #
+            # initial_guess = np.zeros(x.shape[1])
+            # result = minimize(objective, initial_guess, method='SLSQP')
+            # # print(lambda_reg)
+            # return np.array(result.x, dtype=np.float64)
+            lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
 
-            def objective(a):
-                return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(np.abs(a))
+            return np.array(lasso.coef_, dtype=np.float64)
 
-            initial_guess = np.zeros(x.shape[1])
-            result = minimize(objective, initial_guess, method='SLSQP')
-            return np.array(result.x, dtype=np.float64)
         case 'l2':
-            lambda_reg = kwargs.get('lambda_reg', 0.001)
+            # def objective(a):
+            #     return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(a ** 2)
+            #
+            # initial_guess = np.zeros(x.shape[1])
+            # result = minimize(objective, initial_guess, method='SLSQP')
+            # return np.array(result.x, dtype=np.float64)
+            ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            ridge.fit(x, y)
 
-            def objective(a):
-                return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(a ** 2)
+            return np.array(ridge.coef_, dtype=np.float64).flatten()
 
-            initial_guess = np.zeros(x.shape[1])
-            result = minimize(objective, initial_guess, method='SLSQP')
-            return np.array(result.x, dtype=np.float64)
         case 'ElasticNet':
-            lambda_reg = kwargs.get('lambda_reg', 0.001)
-            alpha = kwargs.get('alpha', 0.5)
+            # def objective(a):
+            #     return np.sum((x @ a - y) ** 2) + lambda_reg * (
+            #             alpha * np.sum(np.abs(a)) + (1 - alpha) * np.sum(a ** 2))
+            #
+            # initial_guess = np.zeros(x.shape[1])
+            # result = minimize(objective, initial_guess, method='SLSQP')
+            # return np.array(result.x, dtype=np.float64)
 
-            def objective(a):
-                return np.sum((x @ a - y) ** 2) + lambda_reg * (
-                        alpha * np.sum(np.abs(a)) + (1 - alpha) * np.sum(a ** 2))
+            elastic_net = ElasticNet(alpha=lambda_reg, l1_ratio=alpha, fit_intercept=True, max_iter=10000)
+            elastic_net.fit(x, y)
 
-            initial_guess = np.zeros(x.shape[1])
-            result = minimize(objective, initial_guess, method='SLSQP')
-            return np.array(result.x, dtype=np.float64)
+            return np.array(elastic_net.coef_, dtype=np.float64)
 
 
 class SpectrumReconstructionBasic:
@@ -209,7 +220,6 @@ class SpectrumReconstructionBasic:
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['normal'],
-                             *args,
                              pass_in_pivot_test_data: bool = True,
                              **kwargs):
         ...
@@ -218,7 +228,6 @@ class SpectrumReconstructionBasic:
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['l1', 'l2'],
-                             *args,
                              lambda_reg: float,
                              pivot_pass_in_test_data: bool = True,
                              **kwargs):
@@ -228,7 +237,6 @@ class SpectrumReconstructionBasic:
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['ElasticNet'],
-                             *args,
                              lambda_reg: float,
                              alpha: float,
                              pivot_pass_in_test_data: bool = True,
@@ -238,7 +246,6 @@ class SpectrumReconstructionBasic:
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
-                             *args,
                              pivot_pass_in_test_data: bool = True,
                              **kwargs) -> np.ndarray:
         self._testing_data = testing_data
