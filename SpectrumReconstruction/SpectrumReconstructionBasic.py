@@ -3,7 +3,6 @@ from typing import Literal, overload
 import numpy as np
 import pandas as pd
 from numpy import ndarray
-from scipy.optimize import minimize
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
 from SpectrumReconstruction.Utility import blackbody, gaussian
