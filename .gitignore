@@ -242,6 +242,10 @@ cython_debug/
 .idea/
 
 tests
-tests.ipynb
 
 todo.md
+
+*.ipynb
+!eample.ipynb
+
+Advanced_Analyse.md
