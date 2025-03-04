@@ -2,6 +2,7 @@ from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
+from line_profiler_pycharm import profile
 from numpy import ndarray
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
@@ -70,6 +71,7 @@ def _clean_pivot_training_data(data: pd.DataFrame,
     return sub_mat
 
 
+@profile
 def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
@@ -242,6 +244,7 @@ class SpectrumReconstructionBasic:
                              **kwargs):
         ...
 
+    @profile
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet'],

@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit
 
 # Physical constants
 q = 1.60217662e-19  # Elementary charge [C]
@@ -50,6 +51,7 @@ def ideal_responsivity(lambda_: np.ndarray[float],
     return R
 
 
+@njit(parallel=True)
 def smooth_responsivity(lambda_: np.ndarray[float],
                         e_g: float,  # Bandgap energy [J]
                         delta_lambda: float = 30e-9,
