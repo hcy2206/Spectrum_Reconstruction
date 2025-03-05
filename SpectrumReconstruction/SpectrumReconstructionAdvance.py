@@ -4,7 +4,6 @@ from typing import Callable, Literal, overload
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from line_profiler_pycharm import profile
 from numba import njit
 
 from SpectrumReconstruction.Utility import smooth_responsivity, gaussian, blackbody
@@ -56,70 +55,49 @@ class IdealSemiconductorPhotoDetector:
             responsivity[(lambda_ + bias) < self.visible_blind_cutoff] = 0
         return responsivity
 
-    # @cached_property
-    # @profile
-    # def _responsivity(self):
-    #     # Initialize an empty DataFrame to store the data
-    #     responsivity_data_list = []
-    #
-    #     for bias in self.bias_array:
-    #         responsivity = self._responsivity_func(bias, self.bias_mode)
-    #         # Append a new row to the DataFrame
-    #         new_data = pd.DataFrame({
-    #             'wavelength': self.wavelength,  # Convert to nm for better readability
-    #             'responsivity': responsivity,
-    #             'bias': bias
-    #         })
-    #         # new_data = new_data.dropna(axis=1, how='all')  # 删除所有值为NA的列
-    #         responsivity_data_list.append(new_data)
-    #
-    #     return pd.concat(responsivity_data_list)
-
     @cached_property
-    @profile
     def responsivity(self):
         """
-        计算 responsivity 的向量化版本：
-          - 利用广播同时计算所有 bias 下的 responsivity，生成一个二维矩阵（wavelength x bias）
-          - 在计算完成后一次性转换为 DataFrame（长格式），避免循环内的 DataFrame 拼接开销
+        Calculate a vectorized version of responsivity:
+                  - Use broadcasting to compute responsivity for all biases at once, yielding a 2D matrix (wavelength x bias)
+                  - Convert the result to a DataFrame (long format) in one step to avoid overhead from iterative concatenation
         """
         num_wl = len(self.wavelength)
         num_bias = len(self.bias_array)
 
-        # 根据 bias_mode 构造 lambda 矩阵和 e_g 矩阵
+        # Construct lambda and e_g matrices based on bias_mode
         if self.bias_mode == 'normal_move':
-            # 利用广播：每一列对应一个 bias
+            # Use broadcasting: each column corresponds to a bias
             lambda_matrix = self.wavelength[:, None] - self.bias_array[None, :]
             e_g_matrix = np.full((num_wl, num_bias), self.e_g)
         elif self.bias_mode == 'increase_band_gap':
-            # wavelength 保持不变，bias 影响 e_g 计算
+            # Wavelength remains unchanged, bias affects e_g calculation
             lambda_matrix = np.broadcast_to(self.wavelength[:, None], (num_wl, num_bias))
-            lambda_g = h * c / self.e_g  # 常数
+            lambda_g = h * c / self.e_g  # Constant
             e_g_matrix = h * c / (lambda_g + self.bias_array[None, :])
         else:
             raise ValueError("Unsupported bias mode.")
 
-        # 计算 responsivity，要求 base_function 能够接受矩阵输入
+        # Calculate responsivity, requires base_function can accept matrix input
         responsivity_matrix = self.base_function(lambda_matrix, e_g_matrix, self.delta_lambda, self.eta)
         responsivity_matrix = np.asarray(responsivity_matrix)
         responsivity_matrix[responsivity_matrix < 0] = 0
 
-        # 应用 visible blind cutoff（若设定了正值）
+        # Apply visible blind cutoff (if set to a positive value)
         if self.visible_blind_cutoff > 0:
             if self.bias_mode == 'normal_move':
-                # 对于 normal_move，需将 bias 加回 wavelength
+                # For normal_move, add back the bias to wavelength
                 lambda_matrix_with_bias = lambda_matrix + self.bias_array[None, :]
             elif self.bias_mode == 'increase_band_gap':
-                lambda_matrix_with_bias = lambda_matrix  # 或根据具体物理含义调整
+                lambda_matrix_with_bias = lambda_matrix
             responsivity_matrix[lambda_matrix_with_bias < self.visible_blind_cutoff] = 0
 
-        # 一次性转换为 DataFrame：行索引为 wavelength，列索引为 bias
+        # Convert to DataFrame at once: index as wavelength, columns as bias
         df = pd.DataFrame(responsivity_matrix, index=self.wavelength, columns=self.bias_array)
         return df
 
     @cached_property
     def _responsivity(self):
-        # 若下游需要长格式，可一次性转换
         df_long = self.responsivity.reset_index().melt(id_vars='index', var_name='bias', value_name='responsivity')
         df_long.rename(columns={'index': 'wavelength'}, inplace=True)
         return df_long
@@ -186,61 +164,23 @@ class IncidentSpectrum:
             case _:
                 raise ValueError(f"Unsupported base function: {base_function_name}")
 
-    # @cached_property
-    # @profile
-    # def _spectrum(self):
-    #     spectrum_data_list = []
-    #     match self.base_function_name:
-    #         case 'gaussian':
-    #             for mu in self.mu:
-    #                 spectrum = gaussian(self.wavelength, mu, self.sigma)
-    #                 new_data = pd.DataFrame({
-    #                     'wavelength': self.wavelength,  # Convert to nm for better readability
-    #                     'spectrum': spectrum,
-    #                     'mu': mu
-    #                 })
-    #                 spectrum_data_list.append(new_data)
-    #         case 'blackbody':
-    #             for T in self.T:
-    #                 spectrum = blackbody(self.wavelength, T)
-    #                 new_data = pd.DataFrame({
-    #                     'wavelength': self.wavelength,  # Convert to nm for better readability
-    #                     'spectrum': spectrum,
-    #                     'T': T
-    #                 })
-    #                 spectrum_data_list.append(new_data)
-    #         case _:
-    #             raise ValueError("Unsupported base function.")
-    #     return pd.concat(spectrum_data_list)
-    #
-    # @cached_property
-    # def spectrum(self):
-    #     match self.base_function_name:
-    #         case 'gaussian':
-    #             return self._spectrum.pivot(index='wavelength', columns='mu', values='spectrum')
-    #         case 'blackbody':
-    #             return self._spectrum.pivot(index='wavelength', columns='T', values='spectrum')
-    #         case _:
-    #             raise ValueError("Unsupported base function.")
-
     @cached_property
-    @profile
     def spectrum(self):
         """
-        计算 spectrum 的向量化版本：
-          - 利用广播同时计算所有参数（mu 或 T）下的 spectrum，生成一个二维矩阵（wavelength x mu 或 wavelength x T）
-          - 一次性转换为 DataFrame（宽格式），避免循环内逐个构建 DataFrame 的开销
+        Calculate the vectorized version of the spectrum:
+          - Use broadcasting to compute the spectrum for all parameters (mu or T) simultaneously, generating a 2D matrix (wavelength x mu or wavelength x T)
+          - Convert to a DataFrame (wide format) in one step to avoid the overhead of iteratively constructing DataFrames
         """
         if self.base_function_name == 'gaussian':
-            # 对于 gaussian 模式，self.mu 是参数数组
-            # 利用广播生成 (num_wl, num_mu) 的矩阵
+            # For gaussian mode, self.mu is the array of parameters
+            # Use broadcasting to generate a matrix of shape (num_wl, num_mu)
             spectrum_matrix = gaussian(self.wavelength[:, None], self.mu[None, :], self.sigma)
-            # 转换为 DataFrame：行索引为 wavelength，列索引为 mu
+            # Convert to DataFrame: rows as wavelength and columns as mu
             df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.mu)
             return df
 
         elif self.base_function_name == 'blackbody':
-            # 对于 blackbody 模式，self.T 是参数数组
+            # For blackbody mode, self.T is the array of parameters
             spectrum_matrix = blackbody(self.wavelength[:, None], self.T[None, :])
             df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.T)
             return df
@@ -250,7 +190,6 @@ class IncidentSpectrum:
 
     @cached_property
     def _spectrum(self):
-        # 若下游需要长格式，可一次性转换
         df_long = self.spectrum.reset_index().melt(id_vars='wavelength', var_name=self.base_function_name,
                                                    value_name='spectrum')
         return df_long
@@ -354,7 +293,6 @@ class SimulationSpectrum:
         return fig
 
 
-@profile
 def simulate_response_matrix(
         photodetector: IdealSemiconductorPhotoDetector,
         incident_spectrum: IncidentSpectrum

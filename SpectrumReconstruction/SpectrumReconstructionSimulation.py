@@ -2,7 +2,6 @@ from typing import Callable, Literal, overload
 
 import numpy as np
 import plotly.express as px
-from line_profiler_pycharm import profile
 
 from SpectrumReconstruction import SpectrumReconstructionBasic
 from SpectrumReconstruction.SpectrumReconstructionAdvance import IdealSemiconductorPhotoDetector, IncidentSpectrum, \
@@ -47,7 +46,6 @@ class SpectrumReconstructionSimulation:
     ) -> None:
         ...
 
-    @profile
     def __init__(
             self,
             bias_array: np.ndarray[float],  # Bias array [m]
@@ -171,14 +169,6 @@ class SpectrumReconstructionSimulation:
         fig.update_xaxes(side="top")
         return fig
 
-    # @property
-    # def simulation_spectrum(self):
-    #     return self.simulation_spectrum
-    #
-    # @simulation_spectrum.setter
-    # def simulation_spectrum(self, simulation_spectrum: SimulationSpectrum):
-    #     self.simulation_spectrum = simulation_spectrum
-    @profile
     def reconstruct_spectrum(self,
                              simulation_spectrum: SimulationSpectrum,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
@@ -218,64 +208,3 @@ class SpectrumReconstructionSimulation:
             )
         )
         return fig
-
-
-if __name__ == '__main__':
-    factor = 5
-
-    # Set the Parameters
-    bias_array = np.linspace(0e-9, 400e-9, 200 * factor + 1)  # Bias array [m]
-    wavelength_array = np.linspace(400e-9, 1800e-9, 14000 * factor + 1)  # Wavelength array [m]
-    base_function_name = "gaussian"  # Base function name
-    # sigma = 1e-9 # Standard deviation for Gaussian [m]
-    sigma = 0.5e-9 / 2 / np.sqrt(2 * np.log(2))  # Standard deviation for Gaussian [m] # FWHM = 2*sqrt(2*ln(2))*sigma
-    mu = np.linspace(800e-9, 1800e-9, 200 * factor + 1)  # Mean for Gaussian [m]
-    black_body_temperature = np.linspace(800, 1400, 25)  # Black body temperature [K]
-    photo_detector_bias_mode = "normal_move"  # Photo detector bias mode
-    delta_lambda = 10e-9  # Photodetector Smooth Parameter [m]
-    e_g_ev = 0.8  # Bandgap energy [eV]
-    eta = 1  # Quantum efficiency
-    visible_blind_cutoff = -1  # Visible blind cut-off wavelength [m]
-
-    from SpectrumReconstruction import SpectrumReconstructionSimulation
-    from SpectrumReconstruction import SpectrumReconstructionAdvance as SRAdvance
-    from SpectrumReconstruction import Utility as SRUtility
-    import numpy as np
-
-    # Create the Simulation
-    srs = SpectrumReconstructionSimulation(
-        bias_array=bias_array,
-        wavelength_array=wavelength_array,
-        base_function_name=base_function_name,
-        sigma=sigma,
-        mu=mu,
-        photo_detector_bias_mode=photo_detector_bias_mode,
-        delta_lambda=delta_lambda,
-        e_g_ev=e_g_ev,
-        eta=eta,
-        visible_blind_cutoff=visible_blind_cutoff
-    )
-    srs.response_mapping_figure.show()
-
-    # Set the Spectrum
-    spectrum = SRAdvance.SimulationSpectrum(
-        wavelength_array=wavelength_array,
-        spectrum_function=SRUtility.gaussian_spectrum_sum
-    )
-    spectrum.set_spectrum(
-        _mu=np.array([1754.0e-9, 1754.5e-9]),
-        _sigma=sigma,
-        _alpha=np.array([1.0, 1.0])
-    )
-
-    spectrum.spectrum_figure.show()
-
-    srs.reconstruct_spectrum(
-        simulation_spectrum=spectrum,
-        method='l1',
-        add_gaussian_noise=True,
-        noise_std_ratio=0.01,
-        lambda_reg=1e2,
-        alpha=0.5
-    )
-    srs.reconstruction_spectrum_figure.show()

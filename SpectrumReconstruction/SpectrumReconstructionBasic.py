@@ -2,14 +2,13 @@ from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
-from line_profiler_pycharm import profile
 from numpy import ndarray
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
 from SpectrumReconstruction.Utility import blackbody, gaussian
 
 
-# Programed by o3-mini-high. Errors may occur in extreme cases.
+# Errors may occur in extreme cases.
 def _clean_pivot_training_data(data: pd.DataFrame,
                                internal_var_col_name: str,
                                external_var_col_name: str,
@@ -71,7 +70,6 @@ def _clean_pivot_training_data(data: pd.DataFrame,
     return sub_mat
 
 
-@profile
 def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
@@ -81,46 +79,21 @@ def _linear_regression(x: np.ndarray,
     alpha = kwargs.get('alpha', 0.5)
     match method:
         case 'normal':
-            # result = np.linalg.inv(x.T @ x) @ x.T @ y
             result = np.linalg.pinv(x) @ y
             return np.array(result, dtype=np.float64)
         case 'l1':
-            # def objective(a):
-            #     return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(np.abs(a))
-            #
-            # initial_guess = np.zeros(x.shape[1])
-            # result = minimize(objective, initial_guess, method='SLSQP')
-            # # print(lambda_reg)
-            # return np.array(result.x, dtype=np.float64)
             lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
             lasso.fit(x, y)
-
             return np.array(lasso.coef_, dtype=np.float64)
 
         case 'l2':
-            # def objective(a):
-            #     return np.sum((x @ a - y) ** 2) + lambda_reg * np.sum(a ** 2)
-            #
-            # initial_guess = np.zeros(x.shape[1])
-            # result = minimize(objective, initial_guess, method='SLSQP')
-            # return np.array(result.x, dtype=np.float64)
             ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
             ridge.fit(x, y)
-
             return np.array(ridge.coef_, dtype=np.float64).flatten()
 
         case 'ElasticNet':
-            # def objective(a):
-            #     return np.sum((x @ a - y) ** 2) + lambda_reg * (
-            #             alpha * np.sum(np.abs(a)) + (1 - alpha) * np.sum(a ** 2))
-            #
-            # initial_guess = np.zeros(x.shape[1])
-            # result = minimize(objective, initial_guess, method='SLSQP')
-            # return np.array(result.x, dtype=np.float64)
-
             elastic_net = ElasticNet(alpha=lambda_reg, l1_ratio=alpha, fit_intercept=True, max_iter=10000)
             elastic_net.fit(x, y)
-
             return np.array(elastic_net.coef_, dtype=np.float64)
 
 
@@ -244,7 +217,6 @@ class SpectrumReconstructionBasic:
                              **kwargs):
         ...
 
-    @profile
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
@@ -260,9 +232,6 @@ class SpectrumReconstructionBasic:
             )
         else:
             pivot = self._testing_data
-        # print(pivot)
-        # print(pivot.shape)
-        # print(pivot.values)
         if pivot.shape[1] != 1:
             raise ValueError('The pivot table of test data should have only one column')
         elif pivot.isna().any().any():
