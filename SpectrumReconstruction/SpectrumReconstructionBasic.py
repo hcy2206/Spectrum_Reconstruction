@@ -5,7 +5,7 @@ import pandas as pd
 from numpy import ndarray
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
-from SpectrumReconstruction.Utility import blackbody, gaussian
+from .Utility import blackbody, gaussian
 
 
 # Errors may occur in extreme cases.

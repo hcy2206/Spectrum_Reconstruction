@@ -3,10 +3,10 @@ from typing import Callable, Literal, overload
 import numpy as np
 import plotly.express as px
 
-from SpectrumReconstruction import SpectrumReconstructionBasic
-from SpectrumReconstruction.SpectrumReconstructionAdvance import IdealSemiconductorPhotoDetector, IncidentSpectrum, \
+from . import SpectrumReconstructionBasic
+from .SpectrumReconstructionAdvance import IdealSemiconductorPhotoDetector, IncidentSpectrum, \
     simulate_response_matrix, SimulationSpectrum, simulate_unknown_response
-from SpectrumReconstruction.Utility import smooth_responsivity
+from .Utility import smooth_responsivity
 
 
 class SpectrumReconstructionSimulation:

@@ -6,12 +6,20 @@ import pandas as pd
 import plotly.express as px
 from numba import njit
 
-from SpectrumReconstruction.Utility import smooth_responsivity, gaussian, blackbody
+from .Utility import smooth_responsivity, gaussian, blackbody
 
 # Constants
 q = 1.60217662e-19  # Elementary charge [C]
 h = 6.62607015e-34  # Planck constant [J*s]
 c = 3.0e8  # Speed of light [m/s]
+
+# Default parameters
+visible_blind_cutoff_parameter = 0
+
+
+def change_visible_blind_cutoff_parameter(new_value: float):
+    global visible_blind_cutoff_parameter
+    visible_blind_cutoff_parameter = new_value
 
 
 class IdealSemiconductorPhotoDetector:
@@ -52,7 +60,7 @@ class IdealSemiconductorPhotoDetector:
         responsivity[responsivity < 0] = 0
         # Apply visible blind cut-off
         if self.visible_blind_cutoff > 0:
-            responsivity[(lambda_ + bias) < self.visible_blind_cutoff] = 0
+            responsivity[(lambda_ + bias) < self.visible_blind_cutoff] *= visible_blind_cutoff_parameter
         return responsivity
 
     @cached_property
@@ -90,7 +98,7 @@ class IdealSemiconductorPhotoDetector:
                 lambda_matrix_with_bias = lambda_matrix + self.bias_array[None, :]
             elif self.bias_mode == 'increase_band_gap':
                 lambda_matrix_with_bias = lambda_matrix
-            responsivity_matrix[lambda_matrix_with_bias < self.visible_blind_cutoff] = 0
+            responsivity_matrix[lambda_matrix_with_bias < self.visible_blind_cutoff] *= visible_blind_cutoff_parameter
 
         # Convert to DataFrame at once: index as wavelength, columns as bias
         df = pd.DataFrame(responsivity_matrix, index=self.wavelength, columns=self.bias_array)
