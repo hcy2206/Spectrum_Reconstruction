@@ -4,9 +4,8 @@ from typing import Callable, Literal, overload
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from numba import njit
 
-from .Utility import smooth_responsivity, gaussian, blackbody
+from .Utility import smooth_responsivity, gaussian, blackbody, fast_matmul
 
 # Constants
 q = 1.60217662e-19  # Elementary charge [C]
@@ -64,7 +63,7 @@ class IdealSemiconductorPhotoDetector:
         return responsivity
 
     @cached_property
-    def responsivity(self):
+    def responsivity(self) -> np.ndarray:
         """
         Calculate a vectorized version of responsivity:
                   - Use broadcasting to compute responsivity for all biases at once, yielding a 2D matrix (wavelength x bias)
@@ -93,22 +92,25 @@ class IdealSemiconductorPhotoDetector:
 
         # Apply visible blind cutoff (if set to a positive value)
         if self.visible_blind_cutoff > 0:
-            if self.bias_mode == 'normal_move':
-                # For normal_move, add back the bias to wavelength
-                lambda_matrix_with_bias = lambda_matrix + self.bias_array[None, :]
-            elif self.bias_mode == 'increase_band_gap':
-                lambda_matrix_with_bias = lambda_matrix
+            match self.bias_mode:
+                case 'normal_move':
+                    # For normal_move, add back the bias to wavelength
+                    lambda_matrix_with_bias = lambda_matrix + self.bias_array[None, :]
+                case 'increase_band_gap':
+                    lambda_matrix_with_bias = lambda_matrix
+                case _:
+                    raise ValueError("Unsupported bias mode.")
             responsivity_matrix[lambda_matrix_with_bias < self.visible_blind_cutoff] *= visible_blind_cutoff_parameter
 
-        # Convert to DataFrame at once: index as wavelength, columns as bias
-        df = pd.DataFrame(responsivity_matrix, index=self.wavelength, columns=self.bias_array)
-        return df
+        return responsivity_matrix
 
-    @cached_property
+    @property
     def _responsivity(self):
-        df_long = self.responsivity.reset_index().melt(id_vars='index', var_name='bias', value_name='responsivity')
-        df_long.rename(columns={'index': 'wavelength'}, inplace=True)
-        return df_long
+        # Convert responsivity matrix to DataFrame and reshape to long format
+        df = pd.DataFrame(self.responsivity, index=self.wavelength, columns=self.bias_array)
+        df = df.reset_index().melt(id_vars='index', var_name='bias', value_name='responsivity')
+        df = df.rename(columns={'index': 'wavelength'})
+        return df
 
     def responsivity_figure_show(self):
         # Initialize an empty DataFrame to store the data
@@ -172,8 +174,8 @@ class IncidentSpectrum:
             case _:
                 raise ValueError(f"Unsupported base function: {base_function_name}")
 
-    @cached_property
-    def spectrum(self):
+    @property
+    def spectrum(self) -> np.ndarray:
         """
         Calculate the vectorized version of the spectrum:
           - Use broadcasting to compute the spectrum for all parameters (mu or T) simultaneously, generating a 2D matrix (wavelength x mu or wavelength x T)
@@ -183,24 +185,35 @@ class IncidentSpectrum:
             # For gaussian mode, self.mu is the array of parameters
             # Use broadcasting to generate a matrix of shape (num_wl, num_mu)
             spectrum_matrix = gaussian(self.wavelength[:, None], self.mu[None, :], self.sigma)
-            # Convert to DataFrame: rows as wavelength and columns as mu
-            df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.mu)
-            return df
+            # # Convert to DataFrame: rows as wavelength and columns as mu
+            # df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.mu)
+            # return df
 
         elif self.base_function_name == 'blackbody':
             # For blackbody mode, self.T is the array of parameters
             spectrum_matrix = blackbody(self.wavelength[:, None], self.T[None, :])
-            df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.T)
-            return df
+            # df = pd.DataFrame(spectrum_matrix, index=self.wavelength, columns=self.T)
+            # return df
 
         else:
             raise ValueError("Unsupported base function.")
 
-    @cached_property
+        return spectrum_matrix
+
+    @property
     def _spectrum(self):
-        df_long = self.spectrum.reset_index().melt(id_vars='wavelength', var_name=self.base_function_name,
-                                                   value_name='spectrum')
-        return df_long
+        match self.base_function_name:
+            case 'gaussian':
+                df = pd.DataFrame(self.spectrum, index=self.wavelength, columns=self.mu)
+                df.columns.name = 'mu'
+            case 'blackbody':
+                df = pd.DataFrame(self.spectrum, index=self.wavelength, columns=self.T)
+                df.columns.name = 'T'
+            case _:
+                raise ValueError("Unsupported base function.")
+        df = df.reset_index().melt(id_vars='wavelength', var_name=self.base_function_name,
+                                   value_name='spectrum')
+        return df
 
     def spectrum_figure_show(self):
         # Initialize an empty DataFrame to store the data
@@ -245,27 +258,30 @@ class SimulationSpectrum:
         self.wavelength = wavelength_array
         self.spectrum_function = spectrum_function
 
-    def set_spectrum(self, **kwargs) -> pd.DataFrame:
+    def set_spectrum(self, **kwargs) -> np.ndarray:
         spectrum = self.spectrum_function(self.wavelength, **kwargs)
-        spectrum = pd.DataFrame({
-            'wavelength': self.wavelength,
-            'spectrum': spectrum
-        })
+        # spectrum = pd.DataFrame({
+        #     'wavelength': self.wavelength,
+        #     'spectrum': spectrum
+        # })
         self._spectrum = spectrum
         return spectrum
 
     @property
-    def spectrum(self) -> pd.DataFrame:
+    def spectrum(self) -> np.ndarray:
         # set wavelength as index
         if self._spectrum is None:
             raise ValueError("Spectrum has not been set. Please call set_spectrum() first.")
-        return self._spectrum.set_index('wavelength')
+        return self._spectrum
 
     def spectrum_figure_show(self) -> px.line:
         # Initialize an empty DataFrame to store the data
         if self._spectrum is None:
             raise ValueError("Spectrum has not been set. Please call set_spectrum() first.")
-        fig_data = self._spectrum
+        fig_data = pd.DataFrame({
+            'wavelength': self.wavelength,
+            'spectrum': self.spectrum
+        })
         # Create a figure using plotly express
         fig = px.line(
             fig_data,
@@ -285,12 +301,10 @@ class SimulationSpectrum:
         # Initialize an empty DataFrame to store the data
         if self._spectrum is None:
             raise ValueError("Spectrum has not been set. Please call set_spectrum() first.")
-        fig_data = self._spectrum
         # Create a figure using plotly express
         fig = px.line(
-            fig_data,
-            x='wavelength',
-            y='spectrum',
+            x=self.wavelength,
+            y=self._spectrum,
             labels={
                 'wavelength': 'Wavelength (m)',
                 'spectrum': 'Spectrum'
@@ -304,7 +318,7 @@ class SimulationSpectrum:
 def simulate_response_matrix(
         photodetector: IdealSemiconductorPhotoDetector,
         incident_spectrum: IncidentSpectrum
-) -> pd.DataFrame:
+) -> np.ndarray:
     """
     Calculate the response matrix of the photodetector to the incident spectrum.
     :param photodetector: IdealSemiconductorPhotoDetector object
@@ -316,32 +330,27 @@ def simulate_response_matrix(
         raise ValueError("Wavelengths of the photodetector and incident spectrum do not match.")
 
     responsivity = photodetector.responsivity
-    responsivity = responsivity.values
     spectrum = incident_spectrum.spectrum
-    spectrum = spectrum.values
-
-    # response = responsivity.T @ spectrum
-    @njit
-    def fast_matmul(a, b):
-        return a.T @ b
 
     response = fast_matmul(responsivity, spectrum)
 
-    # Create a DataFrame for the response matrix, index by photodetector.bias_array and columns by incident_spectrum.mu or T
-    _response_matrix = pd.DataFrame(
-        response,
-        columns=incident_spectrum.spectrum.columns,
-        index=photodetector.responsivity.columns
-    )
-    _response_matrix.index.name = 'bias'
-    match incident_spectrum.base_function_name:
-        case 'gaussian':
-            _response_matrix.columns.name = 'mu'
-        case 'blackbody':
-            _response_matrix.columns.name = 'T'
-        case _:
-            raise ValueError("Unsupported base function.")
-    return _response_matrix
+    return response
+
+    # # Create a DataFrame for the response matrix, index by photodetector.bias_array and columns by incident_spectrum.mu or T
+    # _response_matrix = pd.DataFrame(
+    #     response,
+    #     columns=incident_spectrum.spectrum.columns,
+    #     index=photodetector.responsivity.columns
+    # )
+    # _response_matrix.index.name = 'bias'
+    # match incident_spectrum.base_function_name:
+    #     case 'gaussian':
+    #         _response_matrix.columns.name = 'mu'
+    #     case 'blackbody':
+    #         _response_matrix.columns.name = 'T'
+    #     case _:
+    #         raise ValueError("Unsupported base function.")
+    # return _response_matrix
 
 
 def simulate_unknown_response(
@@ -349,7 +358,7 @@ def simulate_unknown_response(
         unknown_spectrum: SimulationSpectrum,
         add_gaussian_noise: bool = False,
         noise_std_ratio: float = 0.01
-) -> pd.DataFrame:
+) -> np.ndarray:
     """
     Calculate the response of the photodetector to the unknown spectrum.
     :param photodetector: IdealSemiconductorPhotoDetector object
@@ -362,21 +371,23 @@ def simulate_unknown_response(
     if not np.array_equal(photodetector.wavelength, unknown_spectrum.wavelength):
         raise ValueError("Wavelengths of the photodetector and unknown spectrum do not match.")
 
-    responsivity = photodetector.responsivity.values
-    spectrum = unknown_spectrum.spectrum.values
+    responsivity = photodetector.responsivity
+    spectrum = unknown_spectrum.spectrum
 
-    response = responsivity.T @ spectrum
+    response = fast_matmul(responsivity, spectrum)
 
     if add_gaussian_noise:
         noise_std = noise_std_ratio * np.mean(np.abs(response))
         response += np.random.normal(0, noise_std, response.shape)
 
-    # Create a DataFrame for the response, index by photodetector.bias_array and columns by unknown_spectrum.spectrum.columns
-    response_df = pd.DataFrame(
-        response,
-        columns=['response'],
-        index=photodetector.responsivity.columns
-    )
-    response_df.index.name = 'bias'
-    response_df.columns.name = 'response'
-    return response_df
+    return response
+
+    # # Create a DataFrame for the response, index by photodetector.bias_array and columns by unknown_spectrum.spectrum.columns
+    # response_df = pd.DataFrame(
+    #     response,
+    #     columns=['response'],
+    #     index=photodetector.responsivity.columns
+    # )
+    # response_df.index.name = 'bias'
+    # response_df.columns.name = 'response'
+    # return response_df

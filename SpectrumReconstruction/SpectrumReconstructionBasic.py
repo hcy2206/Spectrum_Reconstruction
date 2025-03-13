@@ -2,7 +2,6 @@ from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
-from numpy import ndarray
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 
 from .Utility import blackbody, gaussian
@@ -73,21 +72,25 @@ def _clean_pivot_training_data(data: pd.DataFrame,
 def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
-                       **kwargs
-                       ) -> None | ndarray:
-    lambda_reg = kwargs.get('lambda_reg', 0.001)
-    alpha = kwargs.get('alpha', 0.5)
+                       lambda_reg=0.001,
+                       alpha=0.5
+                       ) -> None | np.ndarray:
+    # 局部导入SaveMemory变量，避免循环导入
+    from . import SaveMemory
+    if SaveMemory:
+        x = np.array(x, dtype=np.float32)
+        y = np.array(y, dtype=np.float32)
     match method:
         case 'normal':
-            result = np.linalg.pinv(x) @ y
+            result, *_ = np.linalg.lstsq(x, y, rcond=None)
             return np.array(result, dtype=np.float64)
         case 'l1':
-            lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000, warm_start=True)
             lasso.fit(x, y)
             return np.array(lasso.coef_, dtype=np.float64)
 
         case 'l2':
-            ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000, solver='auto')
             ridge.fit(x, y)
             return np.array(ridge.coef_, dtype=np.float64).flatten()
 
@@ -286,6 +289,157 @@ class SpectrumReconstructionBasic:
         lambda_ = np.repeat(lambda_, external_var.shape[1], axis=1)
 
         result = self.base_func(lambda_, external_var) @ self._a
+
+        if result.ndim > 1:
+            result = result.flatten()
+
+        if normalize:
+            result = np.abs(result)
+            result = result / np.max(result)
+
+        return result
+
+
+class SpectrumReconstructionBasicHighPerformance:
+    @overload
+    def __init__(self,
+                 training_data: np.ndarray,
+                 internal_var_col_name: str,
+                 internal_var_col: np.ndarray,
+                 external_var_col_name: str,
+                 external_var_col: np.ndarray,
+                 dependent_var_col_name: str,
+                 base_func: Literal['blackbody'],
+                 *args,
+                 verify_pivot_data: bool = False,
+                 **kwargs):
+        ...
+
+    @overload
+    def __init__(self,
+                 training_data: np.ndarray,
+                 internal_var_col_name: str,
+                 internal_var_col: np.ndarray,
+                 external_var_col_name: str,
+                 external_var_col: np.ndarray,
+                 dependent_var_col_name: str,
+                 base_func: Literal['gaussian'],
+                 *args,
+                 verify_pivot_data: bool = False,
+                 sigma: float,
+                 **kwargs):
+        ...
+
+    def __init__(self,
+                 training_data: np.ndarray,
+                 internal_var_col_name: str,
+                 internal_var_col: np.ndarray,
+                 external_var_col_name: str,
+                 external_var_col: np.ndarray,
+                 dependent_var_col_name: str,
+                 base_func: Literal['blackbody', 'gaussian'],
+                 *args,
+                 verify_pivot_data: bool = False,
+                 **kwargs):
+
+        self._training_data = training_data
+        self._testing_data = None
+        self._internal_var_col_name = internal_var_col_name
+        self._internal_var_col = internal_var_col
+        self._external_var_col_name = external_var_col_name
+        self._external_var_col = external_var_col
+        self._dependent_var_col_name = dependent_var_col_name
+        self._a = None
+
+        self._base_func_name = base_func
+        match base_func:
+            case 'blackbody':
+                pass
+            case 'gaussian':
+                self._sigma = kwargs.get('sigma', 1e-6)
+            case _:
+                raise ValueError('base_func must be either "blackbody" or "gaussian"')
+
+    def base_func(self,
+                  lambda_: np.ndarray,
+                  external_var: np.ndarray
+                  ) -> np.ndarray:
+        match self._base_func_name:
+            case 'blackbody':
+                return blackbody(lambda_, external_var)
+            case 'gaussian':
+                return gaussian(lambda_, external_var, self._sigma)
+            case _:
+                raise ValueError('self._base_func_name must be either "blackbody" or "gaussian"')
+
+    # @overload
+    # def reconstruct_spectrum(self,
+    #                          testing_data: np.ndarray,
+    #                          method: Literal['normal'],
+    #                          pass_in_pivot_test_data: bool = True,
+    #                          **kwargs):
+    #     ...
+    #
+    # @overload
+    # def reconstruct_spectrum(self,
+    #                          testing_data: np.ndarray,
+    #                          method: Literal['l1', 'l2'],
+    #                          lambda_reg: float,
+    #                          pivot_pass_in_test_data: bool = True,
+    #                          **kwargs):
+    #     ...
+    #
+    # @overload
+    # def reconstruct_spectrum(self,
+    #                          testing_data: np.ndarray,
+    #                          method: Literal['ElasticNet'],
+    #                          lambda_reg: float,
+    #                          alpha: float,
+    #                          pivot_pass_in_test_data: bool = True,
+    #                          **kwargs):
+    #     ...
+
+    def reconstruct_spectrum(self,
+                             testing_data: np.ndarray,
+                             method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
+                             **kwargs) -> None:
+        self._testing_data = testing_data
+
+        self._a = _linear_regression(
+            self._training_data,
+            self._testing_data,
+            method,
+            **kwargs
+        )
+
+    @property
+    def a(self):
+        return self._a
+
+    def spectrum(self,
+                 lambda_: float | np.ndarray,
+                 normalize: bool = True
+                 ) -> float | np.ndarray:
+        if self._external_var_col is None:
+            raise ValueError('External variable not found')
+
+        if self._a is None:
+            raise ValueError('Spectrum has not been reconstructed yet')
+
+        # Validate input shapes before broadcasting
+        if not isinstance(lambda_, np.ndarray):
+            lambda_ = np.asarray(lambda_, dtype=np.float64)
+        if lambda_.size == 0:
+            raise ValueError("Input lambda_ array is empty")
+
+        if self._external_var_col.size == 0:
+            raise ValueError("External variable column is empty")
+
+        # Proceed with broadcasting after validation
+        external_var = np.repeat(self._external_var_col.reshape((1, -1)), lambda_.shape[0], axis=0)
+        lambda_ = np.repeat(lambda_.reshape((-1, 1)), external_var.shape[1], axis=1)
+
+        result = self.base_func(lambda_, external_var) @ self.a
 
         if result.ndim > 1:
             result = result.flatten()

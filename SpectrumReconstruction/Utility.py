@@ -8,6 +8,7 @@ c = 3.0e8  # Speed of light [m/s]
 k = 1.38064852e-23  # Boltzmann constant [J/K]
 
 
+@njit
 def blackbody(lambda_: float | np.ndarray,
               t: float | np.ndarray
               ) -> float | np.ndarray:
@@ -26,12 +27,26 @@ def blackbody(lambda_: float | np.ndarray,
     return np.exp(log_i)
 
 
+# Gaussian function for performance optimization
+# @lru_cache(maxsize=None)
+# @njit
+# def gaussian_inter(lambda_mu: float | np.ndarray,
+#                    sigma: float
+#                      ) -> float | np.ndarray:
+#     return np.exp(-(lambda_mu ** 2) / (2 * sigma ** 2))
+@njit
 def gaussian(lambda_: float | np.ndarray,
              mu: float | np.ndarray,
              sigma: float
              ) -> float | np.ndarray:
-    # Gaussian function for spectral analysis
-    return np.exp(-((lambda_ - mu) ** 2) / (2 * sigma ** 2))
+    return np.exp(-(lambda_ - mu) ** 2 / (2 * sigma ** 2))
+    # if np.isscalar(lambda_) and np.isscalar(mu):
+    #     return gaussian_inter(lambda_ - mu, sigma)
+    # else:
+    #     # vectorized_gaussian = np.vectorize(lambda x, y: gaussian_inter(x - y, sigma))
+    #     # return vectorized_gaussian(lambda_, mu)
+    #     lambda_mu = np.subtract.outer(lambda_, mu)
+    #     return np.exp(-(lambda_mu ** 2) / (2 * sigma ** 2))
 
 
 def ideal_responsivity(lambda_: np.ndarray[float],
@@ -51,7 +66,7 @@ def ideal_responsivity(lambda_: np.ndarray[float],
     return R
 
 
-@njit(parallel=True)
+@njit
 def smooth_responsivity(lambda_: np.ndarray[float],
                         e_g: float,  # Bandgap energy [J]
                         delta_lambda: float = 30e-9,
@@ -91,13 +106,18 @@ def smooth_responsivity_visible_blind(lambda_: np.ndarray[float],
 def gaussian_spectrum_sum(
         _wavelength: np.ndarray[float],
         _mu: np.ndarray[float],
-        _sigma: float,
+        _sigma: float | np.ndarray[float],
         _alpha: np.ndarray[float],
         **kwargs
 ) -> np.ndarray[float]:
-    result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma)
-    for i in range(1, len(_mu)):
-        result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma)
+    if isinstance(_sigma, np.ndarray):
+        result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma[0])
+        for i in range(1, len(_mu)):
+            result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma[i])
+    else:
+        result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma)
+        for i in range(1, len(_mu)):
+            result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma)
     return result
 
 
@@ -111,3 +131,8 @@ def blackbody_spectrum_sum(
     for i in range(1, len(_T)):
         result += _alpha[i] * blackbody(_wavelength, _T[i])
     return result
+
+
+# @njit
+def fast_matmul(a, b):
+    return a.T @ b
