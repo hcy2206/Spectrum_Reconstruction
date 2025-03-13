@@ -95,9 +95,9 @@ def gaussian_spectrum_sum(
         _alpha: np.ndarray[float],
         **kwargs
 ) -> np.ndarray[float]:
-    result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma)
+    result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma[0])
     for i in range(1, len(_mu)):
-        result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma)
+        result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma[i])
     return result
 
 
