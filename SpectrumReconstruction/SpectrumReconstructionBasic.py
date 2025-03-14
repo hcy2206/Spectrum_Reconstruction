@@ -73,7 +73,8 @@ def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
                        method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
                        lambda_reg=0.001,
-                       alpha=0.5
+                       alpha=0.5,
+                       cv=10
                        ) -> None | np.ndarray:
     # 局部导入SaveMemory变量，避免循环导入
     from . import SaveMemory
@@ -84,6 +85,7 @@ def _linear_regression(x: np.ndarray,
         case 'normal':
             result, *_ = np.linalg.lstsq(x, y, rcond=None)
             return np.array(result, dtype=np.float64)
+
         case 'l1':
             lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000, warm_start=True)
             lasso.fit(x, y)
@@ -97,7 +99,25 @@ def _linear_regression(x: np.ndarray,
         case 'ElasticNet':
             elastic_net = ElasticNet(alpha=lambda_reg, l1_ratio=alpha, fit_intercept=True, max_iter=10000)
             elastic_net.fit(x, y)
-            return np.array(elastic_net.coef_, dtype=np.float64)
+            return np.array(elastic_net.coef_, dtype=np.float64).flatten()
+
+        case 'ElasticNetCV':
+            from sklearn.linear_model import ElasticNetCV
+            # If lambda_reg is not a list or ndarray, generate a default candidate range for alphas
+            if not isinstance(lambda_reg, (list, np.ndarray)):
+                alphas = np.logspace(-4, 1, 50)  # default candidate alphas
+            else:
+                alphas = lambda_reg
+            # If alpha is not a list or ndarray, wrap it in a list for candidate l1_ratio values
+            if not isinstance(alpha, (list, np.ndarray)):
+                l1_ratios = [alpha]
+            else:
+                l1_ratios = alpha
+            elastic_net_cv = ElasticNetCV(alphas=alphas, l1_ratio=l1_ratios, cv=cv, fit_intercept=True, max_iter=10000)
+            elastic_net_cv.fit(x, y)
+            print("alpha=", elastic_net_cv.alpha_)
+            print("l1_ratio=", elastic_net_cv.l1_ratio_)
+            return np.array(elastic_net_cv.coef_, dtype=np.float64)
 
 
 class SpectrumReconstructionBasic:
@@ -372,36 +392,9 @@ class SpectrumReconstructionBasicHighPerformance:
             case _:
                 raise ValueError('self._base_func_name must be either "blackbody" or "gaussian"')
 
-    # @overload
-    # def reconstruct_spectrum(self,
-    #                          testing_data: np.ndarray,
-    #                          method: Literal['normal'],
-    #                          pass_in_pivot_test_data: bool = True,
-    #                          **kwargs):
-    #     ...
-    #
-    # @overload
-    # def reconstruct_spectrum(self,
-    #                          testing_data: np.ndarray,
-    #                          method: Literal['l1', 'l2'],
-    #                          lambda_reg: float,
-    #                          pivot_pass_in_test_data: bool = True,
-    #                          **kwargs):
-    #     ...
-    #
-    # @overload
-    # def reconstruct_spectrum(self,
-    #                          testing_data: np.ndarray,
-    #                          method: Literal['ElasticNet'],
-    #                          lambda_reg: float,
-    #                          alpha: float,
-    #                          pivot_pass_in_test_data: bool = True,
-    #                          **kwargs):
-    #     ...
-
     def reconstruct_spectrum(self,
                              testing_data: np.ndarray,
-                             method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
+                             method: Literal['normal', 'l1', 'l2', 'ElasticNet', 'ElasticNetCV'],
                              **kwargs) -> None:
         self._testing_data = testing_data
 

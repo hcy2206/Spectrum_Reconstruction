@@ -181,10 +181,9 @@ class SpectrumReconstructionSimulation:
 
     def reconstruct_spectrum(self,
                              simulation_spectrum: SimulationSpectrum,
-                             method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
+                             method: Literal['normal', 'l1', 'l2', 'ElasticNet', 'ElasticNetCV'],
                              add_gaussian_noise: bool = False,
                              noise_std_ratio: float = 0.001,
-                             pivot_pass_in_test_data: bool = False,
                              **kwargs
                              ) -> np.ndarray:
 
