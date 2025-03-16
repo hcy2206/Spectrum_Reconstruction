@@ -3,9 +3,9 @@ from typing import Callable, Literal, overload
 import numpy as np
 import plotly.express as px
 
-from . import SpectrumReconstructionBasic
 from .SpectrumReconstructionAdvance import IdealSemiconductorPhotoDetector, IncidentSpectrum, \
     simulate_response_matrix, SimulationSpectrum, simulate_unknown_response
+from .SpectrumReconstructionBasic import SpectrumReconstructionBasicHighPerformance
 from .Utility import smooth_responsivity
 
 
@@ -110,6 +110,8 @@ class SpectrumReconstructionSimulation:
                     base_function_name="blackbody",
                     T=self.black_body_temperature
                 )
+                self.response_pivot_columns = self.black_body_temperature
+                self.response_pivot_columns_name = 'T'
             case "gaussian":
                 self.incident_spectrum = IncidentSpectrum(
                     wavelength=self.wavelength_array,
@@ -117,34 +119,42 @@ class SpectrumReconstructionSimulation:
                     sigma=self.sigma,
                     mu=self.mu
                 )
+                self.response_pivot_columns = self.mu
+                self.response_pivot_columns_name = 'mu'
 
         # calculate the response
         self.response_pivot = simulate_response_matrix(
             photodetector=self.photo_detector,
             incident_spectrum=self.incident_spectrum
         )
-        self.response_melted = self.response_pivot.reset_index().melt(
-            id_vars=self.response_pivot.index.name,
-            var_name=self.response_pivot.columns.name,
-            value_name="value"
-        )
+        self.response_pivot_index = self.photo_detector.bias_array
+        self.response_pivot_index_name = 'bias'
+        # self.response_melted = self.response_pivot.reset_index().melt(
+        #     id_vars=self.response_pivot.index.name,
+        #     var_name=self.response_pivot.columns.name,
+        #     value_name="value"
+        # )
 
         # Initialize the SpectrumReconstructionBasic class
         match base_function_name:
             case "blackbody":
-                self.spectrum_reconstruction = SpectrumReconstructionBasic(
-                    training_data=self.response_melted,
-                    internal_var_col_name=self.response_pivot.index.name,
-                    external_var_col_name=self.response_pivot.columns.name,
+                self.spectrum_reconstruction = SpectrumReconstructionBasicHighPerformance(
+                    training_data=self.response_pivot,
+                    internal_var_col_name=self.response_pivot_index_name,
+                    internal_var_col=self.response_pivot_index,
+                    external_var_col_name=self.response_pivot_columns_name,
+                    external_var_col=self.response_pivot_columns,
                     dependent_var_col_name="value",
                     base_func="blackbody",
                     verify_pivot_data=True
                 )
             case "gaussian":
-                self.spectrum_reconstruction = SpectrumReconstructionBasic(
-                    training_data=self.response_melted,
-                    internal_var_col_name=self.response_pivot.index.name,
-                    external_var_col_name=self.response_pivot.columns.name,
+                self.spectrum_reconstruction = SpectrumReconstructionBasicHighPerformance(
+                    training_data=self.response_pivot,
+                    internal_var_col_name=self.response_pivot_index_name,
+                    internal_var_col=self.response_pivot_index,
+                    external_var_col_name=self.response_pivot_columns_name,
+                    external_var_col=self.response_pivot_columns,
                     dependent_var_col_name="value",
                     base_func="gaussian",
                     verify_pivot_data=True,
@@ -156,12 +166,12 @@ class SpectrumReconstructionSimulation:
         fig = px.imshow(
             self.response_pivot,
             labels=dict(
-                x=self.response_pivot.columns.name,
-                y=self.response_pivot.index.name,
+                x=self.response_pivot_columns_name,
+                y=self.response_pivot_index_name,
                 color="Response"
             ),
-            x=self.response_pivot.columns,
-            y=self.response_pivot.index,
+            x=self.response_pivot_columns,
+            y=self.response_pivot_index,
             # color_continuous_scale="viridis",
             aspect="auto",
             title="Response Mapping"
@@ -171,10 +181,9 @@ class SpectrumReconstructionSimulation:
 
     def reconstruct_spectrum(self,
                              simulation_spectrum: SimulationSpectrum,
-                             method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
+                             method: Literal['normal', 'l1', 'l2', 'ElasticNet', 'ElasticNetCV'],
                              add_gaussian_noise: bool = False,
                              noise_std_ratio: float = 0.001,
-                             pivot_pass_in_test_data: bool = False,
                              **kwargs
                              ) -> np.ndarray:
 
@@ -185,13 +194,12 @@ class SpectrumReconstructionSimulation:
             noise_std_ratio=noise_std_ratio
         )
 
-        a = self.spectrum_reconstruction.reconstruct_spectrum(
+        self.spectrum_reconstruction.reconstruct_spectrum(
             testing_data=data_testing,
             method=method,
-            pivot_pass_in_test_data=pivot_pass_in_test_data,
             **kwargs
         )
-        return a
+        return self.spectrum_reconstruction.a
 
     @property
     def reconstruction_spectrum_figure(self):
