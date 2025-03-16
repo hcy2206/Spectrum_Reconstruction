@@ -2,7 +2,7 @@ from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Lasso, Ridge, ElasticNet
+from sklearn.linear_model import Lasso, LassoCV,  Ridge, RidgeCV, ElasticNet, ElasticNetCV, LassoLars, LassoLarsCV, LassoLarsIC, LinearRegression
 
 from .Utility import blackbody, gaussian
 
@@ -71,7 +71,7 @@ def _clean_pivot_training_data(data: pd.DataFrame,
 
 def _linear_regression(x: np.ndarray,
                        y: np.ndarray,
-                       method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
+                       method: str,
                        lambda_reg=0.001,
                        alpha=0.5,
                        cv=10
@@ -96,13 +96,52 @@ def _linear_regression(x: np.ndarray,
             ridge.fit(x, y)
             return np.array(ridge.coef_, dtype=np.float64).flatten()
 
+        case 'LinearRegression':
+            linear_regression = LinearRegression(fit_intercept=True)
+            linear_regression.fit(x, y)
+            return np.array(linear_regression.coef_, dtype=np.float64)
+
+        case 'Lasso':
+            lasso = Lasso(cv=cv, fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
+            return np.array(lasso.coef_, dtype=np.float64)
+
+        case 'LassoCV':
+            lasso = LassoCV(cv=cv, fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
+            return np.array(lasso.coef_, dtype=np.float64)
+
+        case 'LassoLars':
+            lasso = LassoLars(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
+            return np.array(lasso.coef_, dtype=np.float64)
+
+        case 'LassoLarsCV':
+            lasso = LassoLarsCV(cv=cv, fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
+            return np.array(lasso.coef_, dtype=np.float64)
+
+        case 'LassoLarsIC':
+            lasso = LassoLarsIC(criterion='aic', fit_intercept=True, max_iter=10000)
+            lasso.fit(x, y)
+            return np.array(lasso.coef_, dtype=np.float64)
+
+        case 'Ridge':
+            ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
+            ridge.fit(x, y)
+            return np.array(ridge.coef_, dtype=np.float64).flatten()
+
+        case 'RidgeCV':
+            ridge = RidgeCV(cv=cv, fit_intercept=True, max_iter=10000)
+            ridge.fit(x, y)
+            return np.array(ridge.coef_, dtype=np.float64)
+
         case 'ElasticNet':
             elastic_net = ElasticNet(alpha=lambda_reg, l1_ratio=alpha, fit_intercept=True, max_iter=10000)
             elastic_net.fit(x, y)
             return np.array(elastic_net.coef_, dtype=np.float64).flatten()
 
         case 'ElasticNetCV':
-            from sklearn.linear_model import ElasticNetCV
             # If lambda_reg is not a list or ndarray, generate a default candidate range for alphas
             if not isinstance(lambda_reg, (list, np.ndarray)):
                 alphas = np.logspace(-4, 1, 50)  # default candidate alphas
@@ -118,6 +157,9 @@ def _linear_regression(x: np.ndarray,
             print("alpha=", elastic_net_cv.alpha_)
             print("l1_ratio=", elastic_net_cv.l1_ratio_)
             return np.array(elastic_net_cv.coef_, dtype=np.float64)
+
+        case _:
+            raise ValueError('Invalid method for linear regression')
 
 
 class SpectrumReconstructionBasic:
@@ -213,37 +255,13 @@ class SpectrumReconstructionBasic:
             case _:
                 raise ValueError('self._base_func_name must be either "blackbody" or "gaussian"')
 
-    @overload
     def reconstruct_spectrum(self,
                              testing_data: pd.DataFrame,
-                             method: Literal['normal'],
-                             pass_in_pivot_test_data: bool = True,
-                             **kwargs):
-        ...
-
-    @overload
-    def reconstruct_spectrum(self,
-                             testing_data: pd.DataFrame,
-                             method: Literal['l1', 'l2'],
-                             lambda_reg: float,
+                             method: str,
                              pivot_pass_in_test_data: bool = True,
-                             **kwargs):
-        ...
-
-    @overload
-    def reconstruct_spectrum(self,
-                             testing_data: pd.DataFrame,
-                             method: Literal['ElasticNet'],
-                             lambda_reg: float,
-                             alpha: float,
-                             pivot_pass_in_test_data: bool = True,
-                             **kwargs):
-        ...
-
-    def reconstruct_spectrum(self,
-                             testing_data: pd.DataFrame,
-                             method: Literal['normal', 'l1', 'l2', 'ElasticNet'],
-                             pivot_pass_in_test_data: bool = True,
+                             lambda_reg: float = 0.01,
+                             alpha: float = 0.5,
+                             cv: int = 10,
                              **kwargs) -> np.ndarray:
         self._testing_data = testing_data
         self._pivot_pass_in_test_data = pivot_pass_in_test_data
@@ -284,6 +302,9 @@ class SpectrumReconstructionBasic:
             _pivot_training_data_numpy,
             _pivot_test_data_numpy,
             method,
+            lambda_reg,
+            alpha,
+            cv,
             **kwargs
         )
 
