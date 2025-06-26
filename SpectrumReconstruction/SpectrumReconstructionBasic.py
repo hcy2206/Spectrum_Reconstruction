@@ -3,6 +3,7 @@ from typing import Literal, overload
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Lasso, LassoCV,  Ridge, RidgeCV, ElasticNet, ElasticNetCV, LassoLars, LassoLarsCV, LassoLarsIC, LinearRegression
+from scipy.optimize import minimize
 
 from .Utility import blackbody, gaussian
 
@@ -87,9 +88,12 @@ def _linear_regression(x: np.ndarray,
             return np.array(result, dtype=np.float64)
 
         case 'l1':
-            lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000, warm_start=True)
-            lasso.fit(x, y)
-            return np.array(lasso.coef_, dtype=np.float64)
+            def objective(a):
+                return np.sum((np.dot(x, a) - y) ** 2) + lambda_reg * np.sum(np.abs(a))
+
+            initial_guess = np.zeros(x.shape[1])
+            result = minimize(objective, initial_guess, method='SLSQP')
+            return result.x
 
         case 'l2':
             ridge = Ridge(alpha=lambda_reg, fit_intercept=True, max_iter=10000, solver='auto')
@@ -102,13 +106,14 @@ def _linear_regression(x: np.ndarray,
             return np.array(linear_regression.coef_, dtype=np.float64)
 
         case 'Lasso':
-            lasso = Lasso(cv=cv, fit_intercept=True, max_iter=10000)
+            lasso = Lasso( fit_intercept=True, max_iter=10000)
             lasso.fit(x, y)
             return np.array(lasso.coef_, dtype=np.float64)
 
         case 'LassoCV':
             lasso = LassoCV(cv=cv, fit_intercept=True, max_iter=10000)
             lasso.fit(x, y)
+            print("alpha = ", lasso.alpha_)
             return np.array(lasso.coef_, dtype=np.float64)
 
         case 'LassoLars':
@@ -132,7 +137,7 @@ def _linear_regression(x: np.ndarray,
             return np.array(ridge.coef_, dtype=np.float64).flatten()
 
         case 'RidgeCV':
-            ridge = RidgeCV(cv=cv, fit_intercept=True, max_iter=10000)
+            ridge = RidgeCV(cv=cv, fit_intercept=True)
             ridge.fit(x, y)
             return np.array(ridge.coef_, dtype=np.float64)
 
