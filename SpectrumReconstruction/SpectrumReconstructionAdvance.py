@@ -43,7 +43,7 @@ class IdealSemiconductorPhotoDetector:
 
     def _responsivity_func(self,
                            bias: float,
-                           bias_mode: Literal['normal_move', 'increase_band_gap'] = 'normal_move'
+                           bias_mode: Literal['normal_move', 'increase_band_gap', 'decrease_eta'] = 'normal_move'
                            ) -> np.ndarray:
         match bias_mode:
             case 'normal_move':
@@ -53,6 +53,11 @@ class IdealSemiconductorPhotoDetector:
                 lambda_ = self.wavelength
                 lambda_g = h * c / self.e_g
                 e_g = h * c / (lambda_g + bias)
+            case 'decrease_eta':
+                lambda_ = self.wavelength
+                lambda_g = h * c / self.e_g
+                e_g = h * c / (lambda_g + bias)
+                self.eta = 1/ (1+ bias/lambda_g)
             case _:
                 raise ValueError("Unsupported bias mode.")
         responsivity = np.asarray(self.base_function(lambda_, e_g, self.delta_lambda, self.eta))
@@ -82,6 +87,12 @@ class IdealSemiconductorPhotoDetector:
             lambda_matrix = np.broadcast_to(self.wavelength[:, None], (num_wl, num_bias))
             lambda_g = h * c / self.e_g  # Constant
             e_g_matrix = h * c / (lambda_g + self.bias_array[None, :])
+        elif self.bias_mode == 'decrease_eta':
+            # Wavelength remains unchanged, bias affects eta calculation
+            lambda_matrix = np.broadcast_to(self.wavelength[:, None], (num_wl, num_bias))
+            lambda_g = h * c / self.e_g  # Constant
+            e_g_matrix = h * c / (lambda_g + self.bias_array[None, :])
+            self.eta = 1 / (1 + self.bias_array[None, :] / lambda_g)
         else:
             raise ValueError("Unsupported bias mode.")
 
