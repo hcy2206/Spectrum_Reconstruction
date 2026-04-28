@@ -248,7 +248,7 @@ todo.md
 *.ipynb
 !examples/eample.ipynb
 
-Advanced_Analyse.md
+docs/Advanced_Analyse.md
 .conda
 
 /temp

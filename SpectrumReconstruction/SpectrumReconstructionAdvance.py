@@ -224,7 +224,9 @@ class IncidentSpectrum:
                 df.columns.name = 'T'
             case _:
                 raise ValueError("Unsupported base function.")
-        df = df.reset_index().melt(id_vars='wavelength', var_name=self.base_function_name,
+        df.index.name = 'wavelength'
+        param_name = df.columns.name  # 'mu' or 'T'
+        df = df.reset_index().melt(id_vars='wavelength', var_name=param_name,
                                    value_name='spectrum')
         return df
 
