@@ -28,7 +28,7 @@
 - **噪声模拟** &mdash; 添加高斯噪声以模拟真实测量条件。
 - **可视化** &mdash; 基于 Plotly 的交互式图表，支持响应度曲线、入射光谱、响应热力图和重构光谱的展示。
 
-详细的 API 参考文档请参见 [Introduction_CN.md](Introduction_CN.md)。
+详细的 API 参考文档请参见 [中文 API 参考](docs/Module_and_API_Reference_CN.md)。
 
 ## 安装
 
@@ -100,22 +100,23 @@ srs.reconstruction_spectrum_figure.show()
 ### 模块结构
 
 ```
-SpectrumReconstruction
-├── SpectrumReconstructionBasic      # 光谱重构核心类（线性回归）
-├── SpectrumReconstructionSimulation # 端到端模拟的高层封装
-├── SpectrumReconstructionAdvance    # 探测器与光谱建模
-│   ├── IdealSemiconductorPhotoDetector   # 理想半导体光电探测器
-│   ├── IncidentSpectrum                  # 入射光谱（高斯/黑体）
-│   ├── SimulationSpectrum                # 自定义待测光谱
-│   ├── simulate_response_matrix()        # 计算响应矩阵
-│   └── simulate_unknown_response()       # 计算未知光谱响应
-└── Utility                          # 物理函数库
-    ├── blackbody()                       # 黑体辐射（普朗克定律）
-    ├── gaussian()                        # 高斯函数
-    ├── smooth_responsivity()             # 平滑响应度（Sigmoid过渡）
-    ├── ideal_responsivity()              # 理想阶跃响应度
-    ├── gaussian_spectrum_sum()           # 加权高斯光谱叠加
-    └── blackbody_spectrum_sum()          # 加权黑体光谱叠加
+src/
+└── SpectrumReconstruction
+    ├── SpectrumReconstructionBasic      # 光谱重构核心类（线性回归）
+    ├── SpectrumReconstructionSimulation # 端到端模拟的高层封装
+    ├── SpectrumReconstructionAdvance    # 探测器与光谱建模
+    │   ├── IdealSemiconductorPhotoDetector   # 理想半导体光电探测器
+    │   ├── IncidentSpectrum                  # 入射光谱（高斯/黑体）
+    │   ├── SimulationSpectrum                # 自定义待测光谱
+    │   ├── simulate_response_matrix()        # 计算响应矩阵
+    │   └── simulate_unknown_response()       # 计算未知光谱响应
+    └── Utility                          # 物理函数库
+        ├── blackbody()                       # 黑体辐射（普朗克定律）
+        ├── gaussian()                        # 高斯函数
+        ├── smooth_responsivity()             # 平滑响应度（Sigmoid过渡）
+        ├── ideal_responsivity()              # 理想阶跃响应度
+        ├── gaussian_spectrum_sum()           # 加权高斯光谱叠加
+        └── blackbody_spectrum_sum()          # 加权黑体光谱叠加
 ```
 
 ### 重构方法

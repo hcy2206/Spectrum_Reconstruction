@@ -8,6 +8,13 @@ c = 3.0e8  # Speed of light [m/s]
 k = 1.38064852e-23  # Boltzmann constant [J/K]
 
 
+def _as_1d_float_array(values, name: str) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float64).reshape(-1)
+    if values.size == 0:
+        raise ValueError(f'{name} array is empty')
+    return values
+
+
 @njit
 def blackbody(lambda_: float | np.ndarray,
               t: float | np.ndarray
@@ -96,14 +103,23 @@ def gaussian_spectrum_sum(
         _alpha: np.ndarray[float],
         **kwargs
 ) -> np.ndarray[float]:
-    if isinstance(_sigma, np.ndarray):
-        result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma[0])
-        for i in range(1, len(_mu)):
-            result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma[i])
-    else:
-        result = _alpha[0] * gaussian(_wavelength, _mu[0], _sigma)
-        for i in range(1, len(_mu)):
-            result += _alpha[i] * gaussian(_wavelength, _mu[i], _sigma)
+    wavelength = _as_1d_float_array(_wavelength, '_wavelength')
+    mu = _as_1d_float_array(_mu, '_mu')
+    alpha = _as_1d_float_array(_alpha, '_alpha')
+    if mu.size != alpha.size:
+        raise ValueError('_mu and _alpha must have the same length')
+
+    sigma = np.asarray(_sigma, dtype=np.float64)
+    if sigma.ndim == 0:
+        spectrum_matrix = gaussian(wavelength[:, None], mu[None, :], float(sigma))
+        return spectrum_matrix @ alpha
+
+    sigma = sigma.reshape(-1)
+    if sigma.size != mu.size:
+        raise ValueError('_sigma must be scalar or have the same length as _mu')
+    result = np.zeros_like(wavelength, dtype=np.float64)
+    for i in range(mu.size):
+        result += alpha[i] * gaussian(wavelength, mu[i], sigma[i])
     return result
 
 
@@ -113,12 +129,19 @@ def blackbody_spectrum_sum(
         _alpha: np.ndarray[float],
         **kwargs
 ) -> np.ndarray[float]:
-    result = _alpha[0] * blackbody(_wavelength, _T[0])
-    for i in range(1, len(_T)):
-        result += _alpha[i] * blackbody(_wavelength, _T[i])
-    return result
+    wavelength = _as_1d_float_array(_wavelength, '_wavelength')
+    temperature = _as_1d_float_array(_T, '_T')
+    alpha = _as_1d_float_array(_alpha, '_alpha')
+    if temperature.size != alpha.size:
+        raise ValueError('_T and _alpha must have the same length')
+
+    spectrum_matrix = blackbody(wavelength[:, None], temperature[None, :])
+    return spectrum_matrix @ alpha
 
 
-# @njit
 def fast_matmul(a, b):
+    a = np.asarray(a)
+    b = np.asarray(b)
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('The first dimension of a and b must match')
     return a.T @ b

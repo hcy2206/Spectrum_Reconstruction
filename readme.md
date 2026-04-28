@@ -28,7 +28,7 @@ It provides:
 - **Noise simulation** &mdash; add Gaussian noise to simulate realistic measurement conditions.
 - **Visualization** &mdash; interactive Plotly figures for responsivity curves, incident spectra, response heatmaps, and reconstructed spectra.
 
-For a detailed API reference in Chinese, see [Introduction_CN.md](Introduction_CN.md).
+For a detailed API reference, see [Module and API Reference](docs/Module_and_API_Reference.md).
 
 ## Installation
 
@@ -100,22 +100,23 @@ srs.reconstruction_spectrum_figure.show()
 ### Module Structure
 
 ```
-SpectrumReconstruction
-├── SpectrumReconstructionBasic      # Core reconstruction via linear regression
-├── SpectrumReconstructionSimulation # High-level end-to-end simulation
-├── SpectrumReconstructionAdvance    # Photodetector & spectrum modeling
-│   ├── IdealSemiconductorPhotoDetector
-│   ├── IncidentSpectrum
-│   ├── SimulationSpectrum
-│   ├── simulate_response_matrix()
-│   └── simulate_unknown_response()
-└── Utility                          # Physics functions
-    ├── blackbody()
-    ├── gaussian()
-    ├── smooth_responsivity()
-    ├── ideal_responsivity()
-    ├── gaussian_spectrum_sum()
-    └── blackbody_spectrum_sum()
+src/
+└── SpectrumReconstruction
+    ├── SpectrumReconstructionBasic      # Core reconstruction via linear regression
+    ├── SpectrumReconstructionSimulation # High-level end-to-end simulation
+    ├── SpectrumReconstructionAdvance    # Photodetector & spectrum modeling
+    │   ├── IdealSemiconductorPhotoDetector
+    │   ├── IncidentSpectrum
+    │   ├── SimulationSpectrum
+    │   ├── simulate_response_matrix()
+    │   └── simulate_unknown_response()
+    └── Utility                          # Physics functions
+        ├── blackbody()
+        ├── gaussian()
+        ├── smooth_responsivity()
+        ├── ideal_responsivity()
+        ├── gaussian_spectrum_sum()
+        └── blackbody_spectrum_sum()
 ```
 
 ### Reconstruction Methods

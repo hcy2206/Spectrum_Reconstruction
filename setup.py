@@ -3,7 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name='SpectrumReconstruction',
     version='0.2',
-    packages=find_packages(),
+    package_dir={'': 'src'},
+    packages=find_packages(where='src'),
     install_requires=[
         'numpy>=2.0.1, <3.0.0',
         'scipy>=1.14.0, <2.0.0',

@@ -28,16 +28,20 @@ class IdealSemiconductorPhotoDetector:
                  eta: float = 1.0,  # Quantum efficiency
                  delta_lambda: float = 30e-9,  # Transition width [m]
                  base_function: Callable[..., np.ndarray[float]] = smooth_responsivity,  # Base responsivity function
-                 wavelength: np.ndarray[float] = np.linspace(0, 2.0e-6, 500),  # Wavelength array [m]
+                 wavelength: np.ndarray | None = None,  # Wavelength array [m]
                  visible_blind_cutoff: float = -1,  # Cut-off wavelength for visible blind [m]
-                 bias_mode: Literal['normal_move', 'increase_band_gap'] = 'normal_move'
+                 bias_mode: Literal['normal_move', 'increase_band_gap', 'decrease_eta'] = 'normal_move'
                  ):
         self.base_function = base_function
-        self.bias_array = bias_array
+        self.bias_array = np.asarray(bias_array, dtype=np.float64)
         self.e_g = e_g_ev * q
         self.eta = eta
         self.delta_lambda = delta_lambda
-        self.wavelength = wavelength
+        self.wavelength = (
+            np.linspace(0, 2.0e-6, 500)
+            if wavelength is None
+            else np.asarray(wavelength, dtype=np.float64)
+        )
         self.visible_blind_cutoff = visible_blind_cutoff
         self.bias_mode = bias_mode
 
@@ -65,7 +69,8 @@ class IdealSemiconductorPhotoDetector:
         responsivity[responsivity < 0] = 0
         # Apply visible blind cut-off
         if self.visible_blind_cutoff > 0:
-            responsivity[(lambda_ + bias) < self.visible_blind_cutoff] *= visible_blind_cutoff_parameter
+            cutoff_wavelength = lambda_ + bias if bias_mode == 'normal_move' else lambda_
+            responsivity[cutoff_wavelength < self.visible_blind_cutoff] *= visible_blind_cutoff_parameter
         return responsivity
 
     @cached_property

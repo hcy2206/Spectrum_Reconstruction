@@ -8,6 +8,25 @@ from scipy.optimize import minimize
 from .Utility import blackbody, gaussian
 
 
+def _as_1d_float_array(values: float | np.ndarray, name: str) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float64)
+    if values.ndim == 0:
+        values = values.reshape(1)
+    else:
+        values = values.reshape(-1)
+    if values.size == 0:
+        raise ValueError(f'{name} array is empty')
+    return values
+
+
+def _normalize_spectrum(values: np.ndarray) -> np.ndarray:
+    values = np.abs(np.asarray(values, dtype=np.float64))
+    max_value = np.max(values)
+    if max_value == 0 or not np.isfinite(max_value):
+        return values
+    return values / max_value
+
+
 # Errors may occur in extreme cases.
 def _clean_pivot_training_data(data: pd.DataFrame,
                                internal_var_col_name: str,
@@ -33,9 +52,9 @@ def _clean_pivot_training_data(data: pd.DataFrame,
     cols_to_drop = set()
 
     def current_matrix():
-        # Use index.difference/columns.difference to ensure the order remains unchanged
-        return pivot.loc[pivot.index.difference(rows_to_drop),
-        pivot.columns.difference(cols_to_drop)]
+        remaining_rows = pivot.index[~pivot.index.isin(rows_to_drop)]
+        remaining_cols = pivot.columns[~pivot.columns.isin(cols_to_drop)]
+        return pivot.loc[remaining_rows, remaining_cols]
 
     sub_mat = current_matrix()
     # Iterate and remove rows or columns with the lowest "completeness" while missing values exist in the submatrix
@@ -79,6 +98,10 @@ def _linear_regression(x: np.ndarray,
                        ) -> None | np.ndarray:
     # 局部导入SaveMemory变量，避免循环导入
     from . import SaveMemory
+    x = np.asarray(x)
+    y = np.asarray(y)
+    if y.ndim == 2 and y.shape[1] == 1:
+        y = y.ravel()
     if SaveMemory:
         x = np.array(x, dtype=np.float32)
         y = np.array(y, dtype=np.float32)
@@ -106,7 +129,7 @@ def _linear_regression(x: np.ndarray,
             return np.array(linear_regression.coef_, dtype=np.float64)
 
         case 'Lasso':
-            lasso = Lasso( fit_intercept=True, max_iter=10000)
+            lasso = Lasso(alpha=lambda_reg, fit_intercept=True, max_iter=10000)
             lasso.fit(x, y)
             return np.array(lasso.coef_, dtype=np.float64)
 
@@ -327,23 +350,21 @@ class SpectrumReconstructionBasic:
         if self._a is None:
             raise ValueError('Spectrum has not been reconstructed yet')
 
+        scalar_input = np.asarray(lambda_).ndim == 0
+        lambda_values = _as_1d_float_array(lambda_, 'lambda_')
         external_var = self._external_var_col.values.astype(np.float64)
+        if external_var.size == 0:
+            raise ValueError('External variable column is empty')
 
-        external_var = external_var.reshape((1, -1))
-        external_var = np.repeat(external_var, lambda_.shape[0], axis=0)
-        lambda_ = lambda_.reshape((-1, 1))
-        lambda_ = np.repeat(lambda_, external_var.shape[1], axis=1)
-
-        result = self.base_func(lambda_, external_var) @ self._a
+        result = self.base_func(lambda_values[:, None], external_var[None, :]) @ self._a
 
         if result.ndim > 1:
             result = result.flatten()
 
         if normalize:
-            result = np.abs(result)
-            result = result / np.max(result)
+            result = _normalize_spectrum(result)
 
-        return result
+        return float(result[0]) if scalar_input else result
 
 
 class SpectrumReconstructionBasicHighPerformance:
@@ -421,7 +442,7 @@ class SpectrumReconstructionBasicHighPerformance:
     def reconstruct_spectrum(self,
                              testing_data: np.ndarray,
                              method: Literal['normal', 'l1', 'l2', 'ElasticNet', 'ElasticNetCV'],
-                             **kwargs) -> None:
+                             **kwargs) -> np.ndarray:
         self._testing_data = testing_data
 
         self._a = _linear_regression(
@@ -430,6 +451,7 @@ class SpectrumReconstructionBasicHighPerformance:
             method,
             **kwargs
         )
+        return self._a
 
     @property
     def a(self):
@@ -445,26 +467,18 @@ class SpectrumReconstructionBasicHighPerformance:
         if self._a is None:
             raise ValueError('Spectrum has not been reconstructed yet')
 
-        # Validate input shapes before broadcasting
-        if not isinstance(lambda_, np.ndarray):
-            lambda_ = np.asarray(lambda_, dtype=np.float64)
-        if lambda_.size == 0:
-            raise ValueError("Input lambda_ array is empty")
+        scalar_input = np.asarray(lambda_).ndim == 0
+        lambda_values = _as_1d_float_array(lambda_, 'lambda_')
 
         if self._external_var_col.size == 0:
             raise ValueError("External variable column is empty")
 
-        # Proceed with broadcasting after validation
-        external_var = np.repeat(self._external_var_col.reshape((1, -1)), lambda_.shape[0], axis=0)
-        lambda_ = np.repeat(lambda_.reshape((-1, 1)), external_var.shape[1], axis=1)
-
-        result = self.base_func(lambda_, external_var) @ self.a
+        result = self.base_func(lambda_values[:, None], self._external_var_col[None, :]) @ self.a
 
         if result.ndim > 1:
             result = result.flatten()
 
         if normalize:
-            result = np.abs(result)
-            result = result / np.max(result)
+            result = _normalize_spectrum(result)
 
-        return result
+        return float(result[0]) if scalar_input else result
