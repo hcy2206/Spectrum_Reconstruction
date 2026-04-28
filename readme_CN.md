@@ -132,8 +132,8 @@ SpectrumReconstruction
 
 ### 示例
 
-- [eample.ipynb](eample.ipynb) &mdash; `SpectrumReconstructionBasic` 类的分步演示
-- [Simulation.py](Simulation.py) &mdash; 完整的模拟脚本（含全谱段与可见盲对比）
+- [eample.ipynb](examples/eample.ipynb) &mdash; `SpectrumReconstructionBasic` 类的分步演示
+- [Simulation.py](temp/Simulation.py) &mdash; 完整的模拟脚本（含全谱段与可见盲对比）
 
 ## 注意事项
 

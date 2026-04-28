@@ -246,7 +246,9 @@ tests
 todo.md
 
 *.ipynb
-!eample.ipynb
+!examples/eample.ipynb
 
 Advanced_Analyse.md
 .conda
+
+/temp

@@ -132,7 +132,7 @@ SpectrumReconstruction
 
 ### Examples
 
-See [eample.ipynb](eample.ipynb) for a step-by-step walkthrough of the `SpectrumReconstructionBasic` class, and [Simulation.py](Simulation.py) for a full simulation script.
+See [eample.ipynb](examples/eample.ipynb) for a step-by-step walkthrough of the `SpectrumReconstructionBasic` class, and [Simulation.py](temp/Simulation.py) for a full simulation script.
 
 ## Notice
 
