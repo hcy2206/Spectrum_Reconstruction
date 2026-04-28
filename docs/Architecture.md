@@ -104,7 +104,7 @@ The module is organized into three layers, from lowest to highest:
 
 ### 3.1 Layer 1 — Utility (Physics Function Library)
 
-File: `SpectrumReconstruction/Utility.py`
+File: `src/SpectrumReconstruction/Utility.py`
 
 Provides stateless physics primitives. All functions support NumPy array broadcasting:
 
@@ -124,7 +124,7 @@ Provides stateless physics primitives. All functions support NumPy array broadca
 
 #### 3.2.1 `SpectrumReconstructionAdvance`
 
-File: `SpectrumReconstruction/SpectrumReconstructionAdvance.py`
+File: `src/SpectrumReconstruction/SpectrumReconstructionAdvance.py`
 
 Responsible for modeling the photodetector and incident spectra, and computing the response matrix.
 
@@ -180,7 +180,7 @@ Accepts any callable spectrum function and generates the unknown test spectrum l
 
 #### 3.2.2 `SpectrumReconstructionBasic`
 
-File: `SpectrumReconstruction/SpectrumReconstructionBasic.py`
+File: `src/SpectrumReconstruction/SpectrumReconstructionBasic.py`
 
 Provides two implementations:
 
@@ -197,7 +197,7 @@ Provides two implementations:
 
 ### 3.3 Layer 3 — `SpectrumReconstructionSimulation` (End-to-End Simulation)
 
-File: `SpectrumReconstruction/SpectrumReconstructionSimulation.py`
+File: `src/SpectrumReconstruction/SpectrumReconstructionSimulation.py`
 
 Wires all Layer 2 components into a single interface. The internal construction sequence is:
 
@@ -301,7 +301,7 @@ A module-level global parameter `visible_blind_cutoff_parameter` (set via `chang
 ## 6. File Structure
 
 ```
-SpectrumReconstruction/
+src/SpectrumReconstruction/
 ├── __init__.py                         # Public interface exports
 ├── Utility.py                          # Layer 1: physics function library
 ├── SpectrumReconstructionAdvance.py    # Layer 2: detector & spectrum modeling
@@ -322,7 +322,7 @@ docs/
 └── Module_and_API_Reference_CN.md      # Chinese API reference
 
 examples/
-├── eample.ipynb                        # SpectrumReconstructionBasic usage example
+├── example.ipynb                       # SpectrumReconstructionBasic usage example
 ├── data_training_example.csv           # Example training data
 └── data_testing_example.csv            # Example testing data
 ```

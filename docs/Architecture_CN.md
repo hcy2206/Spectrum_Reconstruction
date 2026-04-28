@@ -102,7 +102,7 @@ $$\mathbf{P} \cdot \mathbf{a} \approx \mathbf{y}_{\text{test}}$$
 
 ### 3.1 Layer 1 — Utility（物理函数库）
 
-文件：`SpectrumReconstruction/Utility.py`
+文件：`src/SpectrumReconstruction/Utility.py`
 
 提供无状态的物理计算原语，所有函数均支持 NumPy 数组广播：
 
@@ -122,7 +122,7 @@ $$\mathbf{P} \cdot \mathbf{a} \approx \mathbf{y}_{\text{test}}$$
 
 #### 3.2.1 `SpectrumReconstructionAdvance`
 
-文件：`SpectrumReconstruction/SpectrumReconstructionAdvance.py`
+文件：`src/SpectrumReconstruction/SpectrumReconstructionAdvance.py`
 
 负责探测器与入射光谱的物理建模，以及响应矩阵的计算。
 
@@ -178,7 +178,7 @@ spectrum_matrix = blackbody(wavelength[:, None], T[None, :])          # (N_λ, N
 
 #### 3.2.2 `SpectrumReconstructionBasic`
 
-文件：`SpectrumReconstruction/SpectrumReconstructionBasic.py`
+文件：`src/SpectrumReconstruction/SpectrumReconstructionBasic.py`
 
 提供两个实现：
 
@@ -195,7 +195,7 @@ spectrum_matrix = blackbody(wavelength[:, None], T[None, :])          # (N_λ, N
 
 ### 3.3 Layer 3 — `SpectrumReconstructionSimulation`（端到端模拟层）
 
-文件：`SpectrumReconstruction/SpectrumReconstructionSimulation.py`
+文件：`src/SpectrumReconstruction/SpectrumReconstructionSimulation.py`
 
 将 Layer 2 的所有组件串联为单一接口，内部构造顺序如下：
 
@@ -299,7 +299,7 @@ reconstruct_spectrum(simulation_spectrum, method)
 ## 六、文件结构
 
 ```
-SpectrumReconstruction/
+src/SpectrumReconstruction/
 ├── __init__.py                         # 公共接口导出
 ├── Utility.py                          # Layer 1：物理函数库
 ├── SpectrumReconstructionAdvance.py    # Layer 2：探测器与光谱建模
@@ -319,7 +319,7 @@ docs/
 └── Module_and_API_Reference.md         # 英文 API 参考
 
 examples/
-├── eample.ipynb                        # SpectrumReconstructionBasic 使用示例
+├── example.ipynb                       # SpectrumReconstructionBasic 使用示例
 ├── data_training_example.csv           # 示例训练数据
 └── data_testing_example.csv            # 示例测试数据
 ```

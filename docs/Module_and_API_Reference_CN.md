@@ -51,7 +51,7 @@ SpectrumReconstruction
 
 ```SpectrumReconstructionBasic```为光谱重构的基础类，其为光谱重构的基础类，用于实现光谱重构的基础功能。
 
-关于类```SpectrumReconstructionBasic```的示例请参照[eample.ipynb](examples/eample.ipynb)。
+关于类```SpectrumReconstructionBasic```的示例请参照[example.ipynb](../examples/example.ipynb)。
 
 ## 类 ```SpectrumReconstructionSimulation```
 

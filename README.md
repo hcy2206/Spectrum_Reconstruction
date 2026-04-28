@@ -12,7 +12,7 @@
       <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/SpectrumReconstruction?label=License"/>
    </p>
    <p>
-      English | <a href="readme_CN.md">中文</a>
+      English | <a href="README_CN.md">中文</a>
    </p>
 </div>
 
@@ -133,7 +133,7 @@ src/
 
 ### Examples
 
-See [eample.ipynb](examples/eample.ipynb) for a step-by-step walkthrough of the `SpectrumReconstructionBasic` class, and [Simulation.py](temp/Simulation.py) for a full simulation script.
+See [example.ipynb](examples/example.ipynb) for a step-by-step walkthrough of the `SpectrumReconstructionBasic` class.
 
 ## Notice
 

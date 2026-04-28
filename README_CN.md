@@ -12,7 +12,7 @@
       <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/SpectrumReconstruction?label=License"/>
    </p>
    <p>
-      <a href="readme.md">English</a> | 中文
+      <a href="README.md">English</a> | 中文
    </p>
 </div>
 
@@ -133,8 +133,7 @@ src/
 
 ### 示例
 
-- [eample.ipynb](examples/eample.ipynb) &mdash; `SpectrumReconstructionBasic` 类的分步演示
-- [Simulation.py](temp/Simulation.py) &mdash; 完整的模拟脚本（含全谱段与可见盲对比）
+- [example.ipynb](examples/example.ipynb) &mdash; `SpectrumReconstructionBasic` 类的分步演示
 
 ## 注意事项
 

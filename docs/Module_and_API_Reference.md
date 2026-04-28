@@ -51,7 +51,7 @@ SpectrumReconstruction
 
 `SpectrumReconstructionBasic` is the core class for spectrum reconstruction, implementing the fundamental reconstruction functionality.
 
-For usage examples, see [eample.ipynb](../examples/eample.ipynb).
+For usage examples, see [example.ipynb](../examples/example.ipynb).
 
 ## Class `SpectrumReconstructionSimulation`
 
