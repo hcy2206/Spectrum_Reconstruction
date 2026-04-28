@@ -57,10 +57,11 @@ class IdealSemiconductorPhotoDetector:
                 lambda_ = self.wavelength
                 lambda_g = h * c / self.e_g
                 e_g = h * c / (lambda_g + bias)
-                self.eta = 1/ (1+ bias/lambda_g)
+                eta = 1 / (1 + bias / lambda_g)
             case _:
                 raise ValueError("Unsupported bias mode.")
-        responsivity = np.asarray(self.base_function(lambda_, e_g, self.delta_lambda, self.eta))
+        _eta = eta if bias_mode == 'decrease_eta' else self.eta
+        responsivity = np.asarray(self.base_function(lambda_, e_g, self.delta_lambda, _eta))
         responsivity[responsivity < 0] = 0
         # Apply visible blind cut-off
         if self.visible_blind_cutoff > 0:
@@ -92,12 +93,13 @@ class IdealSemiconductorPhotoDetector:
             lambda_matrix = np.broadcast_to(self.wavelength[:, None], (num_wl, num_bias))
             lambda_g = h * c / self.e_g  # Constant
             e_g_matrix = h * c / (lambda_g + self.bias_array[None, :])
-            self.eta = 1 / (1 + self.bias_array[None, :] / lambda_g)
+            eta = 1 / (1 + self.bias_array[None, :] / lambda_g)
         else:
             raise ValueError("Unsupported bias mode.")
 
         # Calculate responsivity, requires base_function can accept matrix input
-        responsivity_matrix = self.base_function(lambda_matrix, e_g_matrix, self.delta_lambda, self.eta)
+        _eta = eta if self.bias_mode == 'decrease_eta' else self.eta
+        responsivity_matrix = self.base_function(lambda_matrix, e_g_matrix, self.delta_lambda, _eta)
         responsivity_matrix = np.asarray(responsivity_matrix)
         responsivity_matrix[responsivity_matrix < 0] = 0
 
@@ -107,7 +109,7 @@ class IdealSemiconductorPhotoDetector:
                 case 'normal_move':
                     # For normal_move, add back the bias to wavelength
                     lambda_matrix_with_bias = lambda_matrix + self.bias_array[None, :]
-                case 'increase_band_gap':
+                case 'increase_band_gap' | 'decrease_eta':
                     lambda_matrix_with_bias = lambda_matrix
                 case _:
                     raise ValueError("Unsupported bias mode.")
