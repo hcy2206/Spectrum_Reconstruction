@@ -38,7 +38,7 @@ pip install -e .
 
 **环境要求：** Python >= 3.10
 
-**依赖项：** `numpy`、`scipy`、`scikit-learn`、`pandas`、`plotly`、`numba`
+**依赖项：** `numpy>=2.0.1,<2.2.0`、`scipy`、`scikit-learn`、`pandas`、`plotly`、`numba`
 
 ## 使用方法
 

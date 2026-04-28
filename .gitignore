@@ -204,7 +204,9 @@ celerybeat.pid
 
 # Environments
 .env
-.venv
+.python-version
+.venv/
+.uv-cache/
 env/
 venv/
 ENV/

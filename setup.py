@@ -6,7 +6,7 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     install_requires=[
-        'numpy>=2.0.1, <3.0.0',
+        'numpy>=2.0.1, <2.2.0',
         'scipy>=1.14.0, <2.0.0',
         'scikit-learn>=1.5.2, <2.0.0',
         'pandas>=2.2.3, <3.0.0',

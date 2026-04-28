@@ -38,7 +38,7 @@ pip install -e .
 
 **Requirements:** Python >= 3.10
 
-Dependencies: `numpy`, `scipy`, `scikit-learn`, `pandas`, `plotly`, `numba`
+Dependencies: `numpy>=2.0.1,<2.2.0`, `scipy`, `scikit-learn`, `pandas`, `plotly`, `numba`
 
 ## Usage
 
