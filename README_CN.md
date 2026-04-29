@@ -8,8 +8,14 @@
       <code><b> v0.2 </b></code>
    </p>
    <p>
-      <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/SpectrumReconstruction?label=Python">
-      <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/SpectrumReconstruction?label=License"/>
+      <b>黄辰宇</b><sup>*&dagger;</sup>，<b>胡伟达</b><sup>*&dagger;#</sup><br>
+      <sup>*</sup>中国科学院上海技术物理研究所，红外科学与技术全国重点实验室<br>
+      <sup>&dagger;</sup>中国科学院大学<br>
+      <sup>#</sup>通讯作者
+   </p>
+   <p>
+      <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/Spectrum_Reconstruction?label=Python">
+      <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/Spectrum_Reconstruction?label=License"/>
    </p>
    <p>
       <a href="README.md">English</a> | 中文
@@ -144,3 +150,6 @@ src/
 ## 许可证
 
 本项目基于 MIT 许可证开源，详见 [LICENSE](LICENSE) 文件。
+
+本仓库包含用于基于光电探测器的计算光谱重构的研究代码。
+旨在支持相关论文手稿的可重复性验证。

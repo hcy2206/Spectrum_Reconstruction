@@ -8,8 +8,14 @@
       <code><b> v0.2 </b></code>
    </p>
    <p>
-      <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/SpectrumReconstruction?label=Python">
-      <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/SpectrumReconstruction?label=License"/>
+      <b>Chenyu Huang</b><sup>*&dagger;</sup>, <b>Weida Hu</b><sup>*&dagger;#</sup><br>
+      <sup>*</sup><i>State Key Laboratory of Infrared Physics, Shanghai Institute of Technical Physics, Chinese Academy of Sciences</i><br>
+      <sup>&dagger;</sup><i>University of Chinese Academy of Sciences</i><br>
+      <sup>#</sup><i>Corresponding author</i>
+   </p>
+   <p>
+      <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/Spectrum_Reconstruction?label=Python">
+      <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/Spectrum_Reconstruction?label=License"/>
    </p>
    <p>
       English | <a href="README_CN.md">中文</a>
@@ -144,3 +150,6 @@ See [example.ipynb](examples/example.ipynb) for a step-by-step walkthrough of th
 ## License
 
 This project is licensed under the MIT License, see the [LICENSE](LICENSE) file for details.
+
+This repository contains research code for photodetector-based computational spectrum reconstruction.
+It is intended to support reproducibility of the associated manuscript.

@@ -1,10 +1,10 @@
 # SpectrumReconstruction API 参考文档
 
-**Chenyu Huang**$^{*\dagger}$
+**黄辰宇**$^{*\dagger}$
 
-$^*$*State Key Laboratory of Infrared Physics, Shanghai Institute of Technical Physics, Chinese Academy of Sciences*
+$^*$中国科学院上海技术物理研究所，红外科学与技术全国重点实验室
 
-$^\dagger$*University of Chinese Academy of Sciences*
+$^\dagger$中国科学院大学
 
 [TOC]
 
