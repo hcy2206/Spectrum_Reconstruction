@@ -8,12 +8,6 @@
       <code><b> v0.2 </b></code>
    </p>
    <p>
-      <b>Chenyu Huang</b><sup>*&dagger;</sup>, <b>Weida Hu</b><sup>*&dagger;#</sup><br>
-      <sup>*</sup><i>State Key Laboratory of Infrared Physics, Shanghai Institute of Technical Physics, Chinese Academy of Sciences</i><br>
-      <sup>&dagger;</sup><i>University of Chinese Academy of Sciences</i><br>
-      <sup>#</sup><i>Corresponding author</i>
-   </p>
-   <p>
       <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/Spectrum_Reconstruction?label=Python">
       <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/Spectrum_Reconstruction?label=License"/>
    </p>
@@ -24,9 +18,23 @@
 
 ## Introduction
 
-**SpectrumReconstruction** is a Python package for simulating the full pipeline of computational spectrum reconstruction based on semiconductor photodetector responses.
+**SpectrumReconstruction** is a Python package for reconstructing optical spectra from calibrated photodetector signals. It also provides tools for modelling detector responsivity, simulating measurements and evaluating how measurement noise affects the reconstructed spectrum.
 
-It provides:
+The package accompanies the manuscript *End-to-end optoelectronic architecture for event-driven infrared spectroscopy*.
+
+<p>
+      <b>Manuscript authors</b><br>
+      Chenyu Huang<sup>1,2,4</sup>, Mingxin Deng<sup>3,4</sup>, Hui Xia<sup>1,2,4</sup>, Hangyu Xu<sup>1,2*</sup>, Hailu Wang<sup>1,2</sup>, Zihua Huang<sup>1,2</sup>, Kunyu Wang<sup>1</sup>, Xiao Fu<sup>1,2</sup>, Yinan Wang<sup>3*</sup>, Qingjiang Li<sup>3</sup>, Weida Hu<sup>1,2*</sup><br>
+      <sup>1</sup> State Key Laboratory of Infrared Physics, Shanghai Institute of Technical Physics, Chinese Academy of Sciences, Shanghai, 200083, China<br>
+      <sup>2</sup> University of Chinese Academy of Sciences, 101408, China<br>
+      <sup>3</sup> College of Electronic Science and Technology, National University of Defense Technology, Changsha, 410073, China<br>
+      <sup>4</sup> Chenyu Huang, Mingxin Deng and Hui Xia contributed equally.<br>
+      <sup>*</sup> Corresponding authors: Hangyu Xu (<a href="mailto:xuhangyu@mail.sitp.ac.cn">xuhangyu@mail.sitp.ac.cn</a>), Yinan Wang (<a href="mailto:wangyinan@nudt.edu.cn">wangyinan@nudt.edu.cn</a>), Weida Hu (<a href="mailto:wdhu@mail.sitp.ac.cn">wdhu@mail.sitp.ac.cn</a>)
+   </p>
+
+
+## Features
+
 - **Photodetector modeling** &mdash; simulate ideal semiconductor photodetector responsivity with adjustable bandgap, quantum efficiency, bias modes (`normal_move`, `increase_band_gap`, `decrease_eta`), and visible-blind characteristics.
 - **Incident spectrum generation** &mdash; create training spectra using Gaussian or blackbody radiation models.
 - **Response matrix computation** &mdash; calculate the detector response matrix to a set of known incident spectra.
@@ -34,11 +42,13 @@ It provides:
 - **Noise simulation** &mdash; add Gaussian noise to simulate realistic measurement conditions.
 - **Visualization** &mdash; interactive Plotly figures for responsivity curves, incident spectra, response heatmaps, and reconstructed spectra.
 
-For a detailed API reference, see [Module and API Reference](docs/Module_and_API_Reference.md).
+See the [architecture guide](docs/Architecture.md) and [API reference](docs/Module_and_API_Reference.md).
 
 ## Installation
 
 ```bash
+git clone https://github.com/hcy2206/Spectrum_Reconstruction.git
+cd Spectrum_Reconstruction
 pip install -e .
 ```
 
@@ -49,6 +59,14 @@ Dependencies: `numpy>=2.0.1,<2.2.0`, `scipy`, `scikit-learn`, `pandas`, `plotly`
 ## Usage
 
 ### Quick Start
+
+#### Reconstruct a spectrum from detector signals
+
+Run the [reconstruction notebook](examples/example.ipynb) in Jupyter with `examples/` as the working directory. The [calibration data](examples/data_training_example.csv) record detector currents at different blackbody temperatures and bias settings. The [test data](examples/data_testing_example.csv) contain measurements of the source to reconstruct. Each row is one measurement, with columns for bias (`V_bias/mV`), current (`Current`) and temperature (`Temperature`). The notebook uses blackbody basis functions and L1 regularization, then plots normalized spectral intensity against wavelength.
+
+#### Simulate a detector and reconstruct a two-peak spectrum
+
+Generate an input spectrum with peaks at 800 nm and 1200 nm, simulate detector signals with Gaussian noise and reconstruct the spectrum with ElasticNet. Wavelengths are in meters, so 800 nm is entered as `800e-9`. The final plot overlays the input and reconstructed spectra so you can compare peak positions and shapes.
 
 ```python
 import numpy as np
@@ -100,29 +118,11 @@ srs.reconstruct_spectrum(
 )
 
 # Visualize the result
-srs.reconstruction_spectrum_figure.show()
-```
-
-### Module Structure
-
-```
-src/
-└── SpectrumReconstruction
-    ├── SpectrumReconstructionBasic      # Core reconstruction via linear regression
-    ├── SpectrumReconstructionSimulation # High-level end-to-end simulation
-    ├── SpectrumReconstructionAdvance    # Photodetector & spectrum modeling
-    │   ├── IdealSemiconductorPhotoDetector
-    │   ├── IncidentSpectrum
-    │   ├── SimulationSpectrum
-    │   ├── simulate_response_matrix()
-    │   └── simulate_unknown_response()
-    └── Utility                          # Physics functions
-        ├── blackbody()
-        ├── gaussian()
-        ├── smooth_responsivity()
-        ├── ideal_responsivity()
-        ├── gaussian_spectrum_sum()
-        └── blackbody_spectrum_sum()
+fig = srs.reconstruction_spectrum_figure
+fig.update_traces(name="Reconstructed", showlegend=True)
+fig.add_scatter(x=wavelength_array, y=spectrum.spectrum, mode="lines", name="Input")
+fig.update_xaxes(title_text="Wavelength (m)")
+fig.show()
 ```
 
 ### Reconstruction Methods
@@ -137,10 +137,6 @@ src/
 | `ElasticNet` | ElasticNet (L1 + L2 combined) |
 | `ElasticNetCV` | ElasticNet with cross-validated parameter selection |
 
-### Examples
-
-See [example.ipynb](examples/example.ipynb) for a step-by-step walkthrough of the `SpectrumReconstructionBasic` class.
-
 ## Notice
 
 - All wavelength and length parameters are in **meters** internally. Convert from nanometers before passing (e.g., `1000e-9` for 1000 nm).
@@ -150,6 +146,3 @@ See [example.ipynb](examples/example.ipynb) for a step-by-step walkthrough of th
 ## License
 
 This project is licensed under the MIT License, see the [LICENSE](LICENSE) file for details.
-
-This repository contains research code for photodetector-based computational spectrum reconstruction.
-It is intended to support reproducibility of the associated manuscript.

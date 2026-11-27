@@ -8,12 +8,6 @@
       <code><b> v0.2 </b></code>
    </p>
    <p>
-      <b>黄辰宇</b><sup>*&dagger;</sup>，<b>胡伟达</b><sup>*&dagger;#</sup><br>
-      <sup>*</sup>中国科学院上海技术物理研究所，红外科学与技术全国重点实验室<br>
-      <sup>&dagger;</sup>中国科学院大学<br>
-      <sup>#</sup>通讯作者
-   </p>
-   <p>
       <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/hcy2206/Spectrum_Reconstruction?label=Python">
       <img alt="GitHub License" src="https://img.shields.io/github/license/hcy2206/Spectrum_Reconstruction?label=License"/>
    </p>
@@ -24,9 +18,22 @@
 
 ## 简介
 
-**SpectrumReconstruction** 是一个用于模拟基于半导体光电探测器响应的计算光谱重构全流程的 Python 模块。
+**SpectrumReconstruction** 是一个用于从经标定的光电探测器信号中重构光谱的 Python 软件包。它还提供光电探测器响应度建模和测量仿真工具，可用于评估测量噪声对重构光谱的影响。
 
-主要功能：
+本软件包是论文《End-to-end optoelectronic architecture for event-driven infrared spectroscopy》的配套软件。
+
+<p>
+      <b>论文作者</b><br>
+      黄辰宇<sup>1,2,4</sup>、邓铭鑫<sup>3,4</sup>、夏辉<sup>1,2,4</sup>、许航瑀<sup>1,2*</sup>、王海露<sup>1,2</sup>、黄子华<sup>1,2</sup>、王坤宇<sup>1</sup>、付晓<sup>1,2</sup>、王义楠<sup>3*</sup>、李清江<sup>3</sup>、胡伟达<sup>1,2*</sup><br>
+      <sup>1</sup> 中国科学院上海技术物理研究所 红外科学与技术全国重点实验室<br>
+      <sup>2</sup> 中国科学院大学<br>
+      <sup>3</sup> 国防科技大学电子科学学院<br>
+      <sup>4</sup> 黄辰宇、邓铭鑫 和 夏辉 对本工作贡献相同。<br>
+      <sup>*</sup> 通讯作者：许航瑀 (<a href="mailto:xuhangyu@mail.sitp.ac.cn">xuhangyu@mail.sitp.ac.cn</a>), 王义楠 (<a href="mailto:wangyinan@nudt.edu.cn">wangyinan@nudt.edu.cn</a>), 胡伟达 (<a href="mailto:wdhu@mail.sitp.ac.cn">wdhu@mail.sitp.ac.cn</a>)
+   </p>
+
+## 主要功能
+
 - **光电探测器建模** &mdash; 模拟理想半导体光电探测器的光谱响应度，支持可调带隙、量子效率、多种偏置模式（`normal_move`、`increase_band_gap`、`decrease_eta`）及可见盲特性。
 - **入射光谱生成** &mdash; 使用高斯函数或黑体辐射模型生成训练光谱。
 - **响应矩阵计算** &mdash; 计算探测器对一组已知入射光谱的响应矩阵。
@@ -34,11 +41,13 @@
 - **噪声模拟** &mdash; 添加高斯噪声以模拟真实测量条件。
 - **可视化** &mdash; 基于 Plotly 的交互式图表，支持响应度曲线、入射光谱、响应热力图和重构光谱的展示。
 
-详细的 API 参考文档请参见 [中文 API 参考](docs/Module_and_API_Reference_CN.md)。
+参见[模块架构](docs/Architecture_CN.md)和 [API 参考](docs/Module_and_API_Reference_CN.md)。
 
 ## 安装
 
 ```bash
+git clone https://github.com/hcy2206/Spectrum_Reconstruction.git
+cd Spectrum_Reconstruction
 pip install -e .
 ```
 
@@ -49,6 +58,14 @@ pip install -e .
 ## 使用方法
 
 ### 快速上手
+
+#### 从探测器信号重构光谱
+
+在 Jupyter 中以 `examples/` 为工作目录，按顺序运行[重构示例 Notebook](examples/example.ipynb)。[标定数据](examples/data_training_example.csv)记录了不同黑体温度和偏置下的探测器电流，[测试数据](examples/data_testing_example.csv)提供待重构光源的测量记录。每行对应一次测量，三列分别为偏置（`V_bias/mV`）、电流（`Current`）和温度（`Temperature`）。示例使用黑体基函数和 L1 正则化重构光谱，最后绘出归一化光谱强度随波长的变化。
+
+#### 模拟探测器并重构双峰光谱
+
+以下示例生成峰位在 800 nm 和 1200 nm 的输入光谱，模拟含高斯噪声的探测器信号，再用 ElasticNet 重构光谱。波长以米传入，例如 800 nm 写作 `800e-9`。最后的叠加图可用于比较输入谱与重构谱的峰位和峰形。
 
 ```python
 import numpy as np
@@ -100,29 +117,11 @@ srs.reconstruct_spectrum(
 )
 
 # 查看重构结果
-srs.reconstruction_spectrum_figure.show()
-```
-
-### 模块结构
-
-```
-src/
-└── SpectrumReconstruction
-    ├── SpectrumReconstructionBasic      # 光谱重构核心类（线性回归）
-    ├── SpectrumReconstructionSimulation # 端到端模拟的高层封装
-    ├── SpectrumReconstructionAdvance    # 探测器与光谱建模
-    │   ├── IdealSemiconductorPhotoDetector   # 理想半导体光电探测器
-    │   ├── IncidentSpectrum                  # 入射光谱（高斯/黑体）
-    │   ├── SimulationSpectrum                # 自定义待测光谱
-    │   ├── simulate_response_matrix()        # 计算响应矩阵
-    │   └── simulate_unknown_response()       # 计算未知光谱响应
-    └── Utility                          # 物理函数库
-        ├── blackbody()                       # 黑体辐射（普朗克定律）
-        ├── gaussian()                        # 高斯函数
-        ├── smooth_responsivity()             # 平滑响应度（Sigmoid过渡）
-        ├── ideal_responsivity()              # 理想阶跃响应度
-        ├── gaussian_spectrum_sum()           # 加权高斯光谱叠加
-        └── blackbody_spectrum_sum()          # 加权黑体光谱叠加
+fig = srs.reconstruction_spectrum_figure
+fig.update_traces(name="Reconstructed", showlegend=True)
+fig.add_scatter(x=wavelength_array, y=spectrum.spectrum, mode="lines", name="Input")
+fig.update_xaxes(title_text="Wavelength (m)")
+fig.show()
 ```
 
 ### 重构方法
@@ -137,10 +136,6 @@ src/
 | `ElasticNet` | 弹性网络（L1 + L2 混合正则化） |
 | `ElasticNetCV` | 弹性网络（交叉验证自动选择参数） |
 
-### 示例
-
-- [example.ipynb](examples/example.ipynb) &mdash; `SpectrumReconstructionBasic` 类的分步演示
-
 ## 注意事项
 
 - 所有波长和长度参数在内部均使用 **米 (m)** 为单位。传入时需从纳米转换，例如 1000 nm 应写为 `1000e-9`。
@@ -150,6 +145,3 @@ src/
 ## 许可证
 
 本项目基于 MIT 许可证开源，详见 [LICENSE](LICENSE) 文件。
-
-本仓库包含用于基于光电探测器的计算光谱重构的研究代码。
-旨在支持相关论文手稿的可重复性验证。
